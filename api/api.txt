@@ -1,0 +1,7 @@
+Gemini：AIzaSyD1Qni2R0CZ6X1ud2ztgSJPuEhRmjFrv6s
+
+アプリID/デベロッパーID：1025854062340321330
+application_secret：b4c21a1a1442dedfaa5e716a05ab76b00b83ddd3
+アフィリエイトID：46b2f555.7daf80a5.46b2f556.37098a4d
+コールバック許可ドメイン：totalappworks.com
+
