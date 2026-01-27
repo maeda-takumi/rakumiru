@@ -72,19 +72,12 @@ $genreOptions = [
     </div>
     <div class="row">
       <div class="field">
-        <label class="label" for="period">期間</label>
-        <select id="period" class="input">
-          <option value="realtime">realtime（リアルタイム）</option>
-        </select>
-        <div class="help muted">楽天ランキングAPIの仕様によりリアルタイム固定です。</div>
+        <span class="label">期間</span>
+        <div class="input">realtime</div>
       </div>
       <div class="field">
-        <label class="label" for="hits">取得件数</label>
-        <select id="hits" class="input">
-          <option value="10">10</option>
-          <option value="20">20</option>
-          <option value="30" selected>30</option>
-        </select>
+        <span class="label">取得件数</span>
+        <div class="input">30件</div>
       </div>
     </div>
     <div class="row">

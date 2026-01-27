@@ -11,8 +11,8 @@ $userId = 1;
 
 $genreId = trim($_POST['genre_id'] ?? '');
 $genreIds = $_POST['genre_ids'] ?? [];
-$period = trim($_POST['period'] ?? 'daily');
-$hits = (int)($_POST['hits'] ?? 30);
+$period = 'realtime';
+$hits = 30;
 
 $normalizedGenreIds = [];
 if (is_array($genreIds)) {
@@ -41,8 +41,9 @@ if ($period !== 'realtime') {
     $forcedRealtime = true;
 }
 
-if ($hits <= 0 || $hits > 30) {
-    json_ng('hits は1〜30で指定してください');
+
+if (isset($_POST['hits']) && (int)$_POST['hits'] !== $hits) {
+    json_ng('hits は30のみ対応しています');
 }
 
 function http_get_json(string $url): array {
