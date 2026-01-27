@@ -32,6 +32,18 @@ $itemsStmt->execute([
   ':q_like_catch' => '%' . $keyword . '%',
 ]);
 $items = $itemsStmt->fetchAll();
+
+$genreOptions = [
+  ['id' => '100371', 'label' => 'レディースファッション'],
+  ['id' => '100433', 'label' => 'メンズファッション'],
+  ['id' => '100804', 'label' => 'インテリア・寝具・収納'],
+  ['id' => '558944', 'label' => 'キッチン用品・食器'],
+  ['id' => '100026', 'label' => '家電'],
+  ['id' => '100227', 'label' => '食品'],
+  ['id' => '100939', 'label' => '美容・コスメ・香水'],
+  ['id' => '101070', 'label' => 'スポーツ・アウトドア'],
+  ['id' => '101164', 'label' => 'おもちゃ'],
+];
 ?>
 
 <div class="card">
@@ -42,18 +54,29 @@ $items = $itemsStmt->fetchAll();
 
   <div class="form">
     <div class="row">
-      <div class="field">
-        <label class="label" for="genreId">ジャンルID（任意）</label>
-        <input id="genreId" class="input" type="text" inputmode="numeric" placeholder="例：100371">
+      <div class="field field--full">
+        <label class="label">ジャンル（複数選択可）</label>
+        <div class="genre-select" id="genreSelect">
+          <?php foreach ($genreOptions as $genre): ?>
+            <label class="genre-option">
+              <input type="checkbox" name="genre_ids[]" value="<?= h($genre['id']) ?>" data-label="<?= h($genre['label']) ?>">
+              <span><?= h($genre['label']) ?></span>
+            </label>
+          <?php endforeach; ?>
+        </div>
+        <div class="genre-selected" id="genreSelected">
+          <span class="muted">未選択（総合ランキング）</span>
+        </div>
+        <button id="btnClearGenres" class="btn btn--ghost" type="button">選択クリア</button>
       </div>
+    </div>
+    <div class="row">
       <div class="field">
         <label class="label" for="period">期間</label>
         <select id="period" class="input">
-          <option value="daily">daily（デイリー）</option>
           <option value="realtime">realtime（リアルタイム）</option>
-          <option value="weekly">weekly（ウィークリー）</option>
-          <option value="monthly">monthly（マンスリー）</option>
         </select>
+        <div class="help muted">楽天ランキングAPIの仕様によりリアルタイム固定です。</div>
       </div>
       <div class="field">
         <label class="label" for="hits">取得件数</label>
@@ -64,7 +87,6 @@ $items = $itemsStmt->fetchAll();
         </select>
       </div>
     </div>
-
     <div class="row">
       <button id="btnFetchRanking" class="btn btn--primary" type="button">ランキングを取得して保存</button>
       <div class="muted">最後の取得: <?= $lastFetchedAt ? h($lastFetchedAt) : '未取得' ?></div>
@@ -104,28 +126,31 @@ $items = $itemsStmt->fetchAll();
           </div>
           <div class="item-card__body">
             <div class="item-card__title"><?= h($item['item_name']) ?></div>
-            <?php if (!empty($item['catchcopy'])): ?>
-              <div class="item-card__catch"><?= h($item['catchcopy']) ?></div>
-            <?php endif; ?>
-            <div class="item-card__meta">
-              <span>価格: <?= h(number_format((int)$item['item_price'])) ?>円</span>
-              <?php if (!empty($item['last_rank'])): ?>
-                <span>順位: <?= h((string)$item['last_rank']) ?></span>
+            <button class="btn btn--ghost item-card__toggle" type="button" aria-expanded="false">開く</button>
+            <div class="item-card__details" hidden>
+              <?php if (!empty($item['catchcopy'])): ?>
+                <div class="item-card__catch"><?= h($item['catchcopy']) ?></div>
               <?php endif; ?>
-            </div>
-            <div class="item-card__meta">
-              <span>レビュー: <?= h((string)$item['review_average']) ?> (<?= h((string)$item['review_count']) ?>件)</span>
-              <?php if (!empty($item['last_fetched_at'])): ?>
-                <span>取得: <?= h($item['last_fetched_at']) ?></span>
-              <?php endif; ?>
-            </div>
-            <div class="item-card__actions">
-              <?php if (!empty($item['item_url'])): ?>
-                <a class="btn" href="<?= h($item['item_url']) ?>" target="_blank" rel="noopener">商品ページ</a>
-              <?php endif; ?>
-              <?php if (!empty($item['affiliate_url'])): ?>
-                <a class="btn" href="<?= h($item['affiliate_url']) ?>" target="_blank" rel="noopener">アフィリURL</a>
-              <?php endif; ?>
+              <div class="item-card__meta">
+                <span>価格: <?= h(number_format((int)$item['item_price'])) ?>円</span>
+                <?php if (!empty($item['last_rank'])): ?>
+                  <span>順位: <?= h((string)$item['last_rank']) ?></span>
+                <?php endif; ?>
+              </div>
+              <div class="item-card__meta">
+                <span>レビュー: <?= h((string)$item['review_average']) ?> (<?= h((string)$item['review_count']) ?>件)</span>
+                <?php if (!empty($item['last_fetched_at'])): ?>
+                  <span>取得: <?= h($item['last_fetched_at']) ?></span>
+                <?php endif; ?>
+              </div>
+              <div class="item-card__actions">
+                <?php if (!empty($item['item_url'])): ?>
+                  <a class="btn" href="<?= h($item['item_url']) ?>" target="_blank" rel="noopener">商品ページ</a>
+                <?php endif; ?>
+                <?php if (!empty($item['affiliate_url'])): ?>
+                  <a class="btn" href="<?= h($item['affiliate_url']) ?>" target="_blank" rel="noopener">アフィリURL</a>
+                <?php endif; ?>
+              </div>
             </div>
           </div>
         </article>

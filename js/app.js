@@ -166,7 +166,9 @@
 (() => {
   const btn = document.getElementById("btnFetchRanking");
   const statusEl = document.getElementById("fetchStatus");
-  const genreEl = document.getElementById("genreId");
+  const genreInputs = document.querySelectorAll("input[name='genre_ids[]']");
+  const genreSelected = document.getElementById("genreSelected");
+  const clearGenresBtn = document.getElementById("btnClearGenres");
   const periodEl = document.getElementById("period");
   const hitsEl = document.getElementById("hits");
 
@@ -177,13 +179,56 @@
     statusEl.textContent = msg || "";
   };
 
+  const renderSelectedGenres = () => {
+    if (!genreSelected) return;
+    const selected = [...genreInputs]
+      .filter((input) => input.checked)
+      .map((input) => ({
+        id: input.value,
+        label: input.dataset.label || input.value
+      }));
+
+    genreSelected.innerHTML = "";
+    if (selected.length === 0) {
+      const span = document.createElement("span");
+      span.className = "muted";
+      span.textContent = "未選択（総合ランキング）";
+      genreSelected.appendChild(span);
+      return;
+    }
+
+    selected.forEach((genre) => {
+      const tag = document.createElement("span");
+      tag.className = "genre-tag";
+      tag.textContent = genre.label;
+      genreSelected.appendChild(tag);
+    });
+  };
+
+  genreInputs.forEach((input) => {
+    input.addEventListener("change", renderSelectedGenres);
+  });
+
+  clearGenresBtn?.addEventListener("click", () => {
+    genreInputs.forEach((input) => {
+      input.checked = false;
+    });
+    renderSelectedGenres();
+  });
+
+  renderSelectedGenres();
+
   btn.addEventListener("click", async () => {
     btn.disabled = true;
     setStatus("取得中…", "muted");
 
     try {
       const body = new URLSearchParams();
-      if (genreEl?.value.trim()) body.set("genre_id", genreEl.value.trim());
+      genreInputs.forEach((input) => {
+        if (input.checked) {
+          body.append("genre_ids[]", input.value);
+        }
+      });
       if (periodEl?.value) body.set("period", periodEl.value);
       if (hitsEl?.value) body.set("hits", hitsEl.value);
 
@@ -208,5 +253,25 @@
     } finally {
       btn.disabled = false;
     }
+  });
+})();
+
+(() => {
+  const cards = document.querySelectorAll(".item-card");
+  if (!cards.length) return;
+
+  document.addEventListener("click", (event) => {
+    const toggle = event.target.closest(".item-card__toggle");
+    if (!toggle) return;
+    const card = toggle.closest(".item-card");
+    if (!card) return;
+
+    const isOpen = card.classList.toggle("is-open");
+    const details = card.querySelector(".item-card__details");
+    if (details) {
+      details.hidden = !isOpen;
+    }
+    toggle.textContent = isOpen ? "閉じる" : "開く";
+    toggle.setAttribute("aria-expanded", String(isOpen));
   });
 })();
