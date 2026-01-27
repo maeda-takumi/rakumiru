@@ -21,14 +21,15 @@ $itemsStmt = $pdo->prepare("
   SELECT *
   FROM items
   WHERE user_id = :uid
-    AND (:q = '' OR item_name LIKE :q_like OR catchcopy LIKE :q_like)
+    AND (:q = '' OR item_name LIKE :q_like_name OR catchcopy LIKE :q_like_catch)
   ORDER BY {$orderSql}
   LIMIT 200
 ");
 $itemsStmt->execute([
   ':uid' => $userId,
   ':q' => $keyword,
-  ':q_like' => '%' . $keyword . '%',
+  ':q_like_name' => '%' . $keyword . '%',
+  ':q_like_catch' => '%' . $keyword . '%',
 ]);
 $items = $itemsStmt->fetchAll();
 ?>
