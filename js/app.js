@@ -163,3 +163,50 @@
     }
   });
 })();
+(() => {
+  const btn = document.getElementById("btnFetchRanking");
+  const statusEl = document.getElementById("fetchStatus");
+  const genreEl = document.getElementById("genreId");
+  const periodEl = document.getElementById("period");
+  const hitsEl = document.getElementById("hits");
+
+  if (!btn || !statusEl) return;
+
+  const setStatus = (msg, type = "muted") => {
+    statusEl.className = `status ${type}`;
+    statusEl.textContent = msg || "";
+  };
+
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    setStatus("取得中…", "muted");
+
+    try {
+      const body = new URLSearchParams();
+      if (genreEl?.value.trim()) body.set("genre_id", genreEl.value.trim());
+      if (periodEl?.value) body.set("period", periodEl.value);
+      if (hitsEl?.value) body.set("hits", hitsEl.value);
+
+      const res = await fetch("api/fetch_ranking.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+        body
+      });
+
+      const json = await res.json();
+      if (!json.ok) {
+        setStatus(json.error || "取得に失敗しました", "danger");
+        return;
+      }
+
+      setStatus(`${json.message}（${json.fetched_at}）`, "success");
+      setTimeout(() => {
+        window.location.reload();
+      }, 600);
+    } catch (e) {
+      setStatus("通信エラーが発生しました", "danger");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
