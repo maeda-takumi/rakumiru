@@ -205,15 +205,13 @@ foreach ($genreOptions as $genreOption) {
 </style>
 
 <div class="card">
-  <div class="card__head">
-      <h2 class="card__title">取得グループ一覧</h2>
+    <div class="fetch-head">
+      <h1 class="card__title">売れ筋ランキング取得</h1>
 
       <button id="btnInfo" class="iconbtn" type="button" aria-label="検索条件の説明">
         <img src="icon/info.png" alt="" class="info-icon">
       </button>
     </div>
-
-  </div>
   <div class="form">
 
     <!-- ジャンル選択ボタン -->
@@ -336,21 +334,6 @@ foreach ($genreOptions as $genreOption) {
           <?= $activeRunLabel !== '' ? h($activeRunLabel) : '取得履歴を選択してください' ?>
         </div>
         <ul class="history-list" id="fetchHistoryList" data-active-run="<?= h((string)$runId) ?>">
-          <?php foreach ($fetchRuns as $index => $run): ?>
-            <?php $active = (int)$run['id'] === $runId; ?>
-            <li class="history-list__item">
-              <button
-                class="history-list__button<?= $active ? ' is-active' : '' ?>"
-                type="button"
-                data-run-id="<?= h((string)$run['id']) ?>"
-                data-fetched-at="<?= h((string)$run['fetched_at']) ?>"
-                data-run-label="<?= h('取得' . ($index + 1)) ?>"
-              >
-                <span class="history-list__label">取得<?= $index + 1 ?></span>
-                <span class="history-list__date"><?= h((string)$run['fetched_at']) ?></span>
-              </button>
-            </li>
-          <?php endforeach; ?>
         </ul>
       <?php endif; ?>
     </div>
