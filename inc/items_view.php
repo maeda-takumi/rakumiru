@@ -63,43 +63,46 @@ function render_group_items_list(array $items, array $genreLabels): void {
     <p class="muted">この取得グループには商品がありません。</p>
   <?php else: ?>
     <div class="group-items">
-      <div class="group-items__head">
-        <span>商品名</span>
-        <span>価格</span>
-        <span>順位</span>
-        <span>レビュー</span>
-        <span>リンク</span>
-      </div>
       <?php foreach ($items as $item): ?>
         <?php
           $genreDisplay = '';
           if (!empty($item['last_genre_id'])) {
             $genreDisplay = format_genre_display((string)$item['last_genre_id'], $genreLabels);
           }
+          $imageUrl = $item['image_url'] ?? '';
         ?>
-        <div class="group-items__row">
-          <div class="group-items__main">
-            <div class="group-items__name"><?= h($item['item_name']) ?></div>
+        <article class="group-item">
+          <div class="group-item__media">
+            <?php if (!empty($imageUrl)): ?>
+              <img src="<?= h($imageUrl) ?>" alt="<?= h($item['item_name']) ?>">
+            <?php else: ?>
+              <span class="group-item__placeholder">画像なし</span>
+            <?php endif; ?>
+          </div>
+          <div class="group-item__content">
+            <div class="group-item__name"><?= h($item['item_name']) ?></div>
             <?php if (!empty($item['catchcopy'])): ?>
-              <div class="group-items__catch"><?= h($item['catchcopy']) ?></div>
+              <div class="group-item__catch"><?= h($item['catchcopy']) ?></div>
             <?php endif; ?>
             <?php if ($genreDisplay !== ''): ?>
-              <div class="group-items__genre">ジャンル: <?= h($genreDisplay) ?></div>
+              <div class="group-item__genre">ジャンル: <?= h($genreDisplay) ?></div>
             <?php endif; ?>
+            <div class="group-item__meta">
+              <span><?= h(number_format((int)$item['item_price'])) ?>円</span>
+              <span>順位: <?= !empty($item['last_rank']) ? h((string)$item['last_rank']) : '-' ?></span>
+              <span>レビュー: <?= h((string)$item['review_average']) ?> (<?= h((string)$item['review_count']) ?>件)</span>
+            </div>
+            <div class="group-item__actions">
+              <?php if (!empty($item['item_url'])): ?>
+                <a class="group-item__cta" href="<?= h($item['item_url']) ?>" target="_blank" rel="noopener">商品ページへ</a>
+              <?php endif; ?>
+              <?php if (!empty($item['affiliate_url'])): ?>
+                <a class="group-item__link" href="<?= h($item['affiliate_url']) ?>" target="_blank" rel="noopener">アフィリURL</a>
+              <?php endif; ?>
+            </div>
           </div>
-          <div class="group-items__cell"><?= h(number_format((int)$item['item_price'])) ?>円</div>
-          <div class="group-items__cell"><?= !empty($item['last_rank']) ? h((string)$item['last_rank']) : '-' ?></div>
-          <div class="group-items__cell"><?= h((string)$item['review_average']) ?> (<?= h((string)$item['review_count']) ?>件)</div>
-          <div class="group-items__cell group-items__links">
-            <?php if (!empty($item['item_url'])): ?>
-              <a class="btn btn--ghost" href="<?= h($item['item_url']) ?>" target="_blank" rel="noopener">商品ページ</a>
-            <?php endif; ?>
-            <?php if (!empty($item['affiliate_url'])): ?>
-              <a class="btn btn--ghost" href="<?= h($item['affiliate_url']) ?>" target="_blank" rel="noopener">アフィリURL</a>
-            <?php endif; ?>     
-          </div>
-        </div>
+        </article>
       <?php endforeach; ?>
     </div>
   <?php endif;
-}                   
+}                
