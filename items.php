@@ -147,6 +147,15 @@ $genreOptions = [
       <button id="btnOpenGenreModal" class="btn" type="button">ジャンル選択</button>
     </div>
 
+    <!-- 期間選択 -->
+    <div class="row">
+      <label class="muted" for="period">取得期間</label>
+      <select class="input" id="period" name="period">
+        <option value="realtime" selected>リアルタイム</option>
+        <option value="daily">デイリー</option>
+      </select>
+    </div>
+
     <!-- 選択ジャンル（×付き） -->
     <div class="row">
       <div id="genreSelected" class="chips">
@@ -173,10 +182,10 @@ $genreOptions = [
 
     <div class="modal__body">
       <ul class="list">
-        <li><b>取得期間：</b>リアルタイム固定</li>
+        <li><b>取得期間：</b>リアルタイム / デイリー</li>
         <li><b>取得件数：</b>30件固定</li>
         <li><b>ジャンル未選択：</b>総合ランキングを取得</li>
-        <li><b>ジャンル複数選択：</b>選択したジャンルごとに取得して保存</li>
+        <li><b>ジャンル選択：</b>選択したジャンルのランキングを取得して保存</li>
       </ul>
     </div>
   </div>
@@ -192,15 +201,15 @@ $genreOptions = [
 
     <div class="modal__body">
       <div class="muted" style="margin-bottom:10px;">
-        複数選択できます。未選択のまま「決定」すると総合ランキングになります。
+        1つだけ選択できます。未選択のまま「決定」すると総合ランキングになります。
       </div>
 
-      <!-- ▼ ここにチェックボックスを置く（従来の input[name="genre_ids[]"] を維持） -->
+      <!-- ▼ ここにラジオボタンを置く -->
       <div class="genre-grid" id="genreSelect">
         <?php foreach ($genreOptions as $genre): ?>
           <label class="genre-option">
-            <input type="checkbox"
-                   name="genre_ids[]"
+            <input type="radio"
+                   name="genre_id"
                    value="<?= h($genre['id']) ?>"
                    data-label="<?= h($genre['label']) ?>">
             <span><?= h($genre['label']) ?></span>
@@ -293,26 +302,23 @@ document.addEventListener('DOMContentLoaded', () => {
   // キャンセル用に、開いた時点のチェック状態を保存
   let snapshot = null;
 
-  function getCheckedInputs() {
-    return Array.from(document.querySelectorAll('input[name="genre_ids[]"]:checked'));
+  function getCheckedInput() {
+    return document.querySelector('input[name="genre_id"]:checked');
   }
 
   function renderSelected() {
-    const checked = getCheckedInputs();
-    if (checked.length === 0) {
+    const checked = getCheckedInput();
+    if (!checked) {
       genreSelected.innerHTML = '<span class="muted">未選択（総合ランキング）</span>';
       return;
     }
-    const pills = checked.map(i => {
-      const label = i.dataset.label || i.value;
-      return `<span class="genre-pill">${escapeHtml(label)}</span>`;
-    });
-    genreSelected.innerHTML = pills.join('');
+    const label = checked.dataset.label || checked.value;
+    genreSelected.innerHTML = `<span class="genre-pill">${escapeHtml(label)}</span>`;
   }
 
   function openModal() {
     // snapshotを保存
-    snapshot = Array.from(document.querySelectorAll('input[name="genre_ids[]"]')).map(i => i.checked);
+    snapshot = document.querySelector('input[name="genre_id"]:checked')?.value ?? null;
 
     modal.hidden = false;
     modal.setAttribute('aria-hidden', 'false');
@@ -328,9 +334,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function restoreSnapshot() {
-    if (!snapshot) return;
-    const inputs = Array.from(document.querySelectorAll('input[name="genre_ids[]"]'));
-    inputs.forEach((i, idx) => { i.checked = !!snapshot[idx]; });
+    const inputs = Array.from(document.querySelectorAll('input[name="genre_id"]'));
+    if (snapshot === null) {
+      inputs.forEach((i) => { i.checked = false; });
+      return;
+    }
+    inputs.forEach((i) => { i.checked = i.value === snapshot; });
   }
 
   // HTMLエスケープ（最低限）
@@ -370,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   btnClear?.addEventListener('click', () => {
-    document.querySelectorAll('input[name="genre_ids[]"]').forEach(i => i.checked = false);
+    document.querySelectorAll('input[name="genre_id"]').forEach(i => i.checked = false);
     renderSelected();
   });
 

@@ -166,7 +166,7 @@
 (() => {
   const btn = document.getElementById("btnFetchRanking");
   const statusEl = document.getElementById("fetchStatus");
-  const genreInputs = document.querySelectorAll("input[name='genre_ids[]']");
+  const genreInputs = document.querySelectorAll("input[name='genre_id']");
   const genreSelected = document.getElementById("genreSelected");
   const clearGenresBtn = document.getElementById("btnClearGenres");
   const periodEl = document.getElementById("period");
@@ -179,60 +179,25 @@
     statusEl.textContent = msg || "";
   };
 
-const renderSelectedGenres = () => {
-  if (!genreSelected) return;
+  const renderSelectedGenres = () => {
+    if (!genreSelected) return;
 
-  const selected = [...genreInputs]
-    .filter((input) => input.checked)
-    .map((input) => ({
-      id: input.value,
-      label: input.dataset.label || input.value
-    }));
+    const selected = [...genreInputs].find((input) => input.checked);
+    genreSelected.innerHTML = "";
 
-  genreSelected.innerHTML = "";
-
-  if (selected.length === 0) {
-    const span = document.createElement("span");
-    span.className = "chip chip--muted";
-    span.textContent = "総合（未選択）";
-    genreSelected.appendChild(span);
-    return;
-  }
-
-  selected.forEach((genre) => {
+    if (!selected) {
+      const span = document.createElement("span");
+      span.className = "chip chip--muted";
+      span.textContent = "総合（未選択）";
+      genreSelected.appendChild(span);
+      return;
+    }
     const chip = document.createElement("span");
     chip.className = "chip";
-    chip.dataset.genreId = genre.id;
-
-    const label = document.createElement("span");
-    label.textContent = genre.label;
-
-    const x = document.createElement("button");
-    x.type = "button";
-    x.className = "chip__x";
-    x.textContent = "×";
-    x.setAttribute("aria-label", `${genre.label} を解除`);
-
-    chip.appendChild(x);
-    chip.appendChild(label);
+    chip.dataset.genreId = selected.value;
+    chip.textContent = selected.dataset.label || selected.value;
     genreSelected.appendChild(chip);
-  });
-};
-
-  genreSelected?.addEventListener("click", (e) => {
-    const xBtn = e.target.closest(".chip__x");
-    if (!xBtn) return;
-
-    const chip = xBtn.closest(".chip");
-    const genreId = chip?.dataset.genreId;
-    if (!genreId) return;
-
-    // 対応するチェックを外す
-    const target = [...genreInputs].find((i) => i.value === genreId);
-    if (target) target.checked = false;
-
-    renderSelectedGenres();
-  });
+  };
 
   // genreInputs.forEach((input) => {
   //   input.addEventListener("change", renderSelectedGenres);
@@ -253,11 +218,10 @@ const renderSelectedGenres = () => {
 
     try {
       const body = new URLSearchParams();
-      genreInputs.forEach((input) => {
-        if (input.checked) {
-          body.append("genre_ids[]", input.value);
-        }
-      });
+      const selected = [...genreInputs].find((input) => input.checked);
+      if (selected) {
+        body.set("genre_id", selected.value);
+      }
       if (periodEl?.value) body.set("period", periodEl.value);
       if (hitsEl?.value) body.set("hits", hitsEl.value);
 

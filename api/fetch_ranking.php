@@ -11,7 +11,7 @@ $userId = 1;
 
 $genreId = trim($_POST['genre_id'] ?? '');
 $genreIds = $_POST['genre_ids'] ?? [];
-$period = 'realtime';
+$period = trim($_POST['period'] ?? 'realtime');
 $hits = 30;
 
 $normalizedGenreIds = [];
@@ -30,15 +30,10 @@ foreach ($normalizedGenreIds as $candidate) {
     }
 }
 
-$allowedPeriods = ['realtime', 'daily', 'weekly', 'monthly'];
+$period = $period === '' ? 'realtime' : $period;
+$allowedPeriods = ['realtime', 'daily'];
 if (!in_array($period, $allowedPeriods, true)) {
     json_ng('period が不正です');
-}
-
-$forcedRealtime = false;
-if ($period !== 'realtime') {
-    $period = 'realtime';
-    $forcedRealtime = true;
 }
 
 
@@ -186,10 +181,9 @@ try {
 
     $pdo->commit();
     $genreSummary = count($normalizedGenreIds) > 0 ? count($normalizedGenreIds) . 'ジャンル' : '総合';
-    $note = $forcedRealtime ? ' ※期間はリアルタイム固定です' : '';
 
     json_ok([
-        'message' => "{$count}件を保存しました（{$genreSummary}）{$note}",
+        'message' => "{$count}件を保存しました（{$genreSummary} / {$period}）",
         'count' => $count,
         'fetched_at' => $fetchedAt,
     ]);
