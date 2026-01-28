@@ -342,8 +342,20 @@ foreach ($genreOptions as $genreOption) {
       <?php if (count($fetchRuns) === 0): ?>
         <p class="muted">取得履歴がありません。</p>
       <?php else: ?>
+        <?php
+          $activeRunLabel = '';
+          foreach ($fetchRuns as $index => $run) {
+            if ((int)$run['id'] === $runId) {
+              $activeRunLabel = '取得' . ($index + 1) . ' ' . $run['fetched_at'];
+              break;
+            }
+          }
+        ?>
+        <div class="history-active" id="activeRunLabel" data-active-run="<?= h((string)$runId) ?>">
+          <?= $activeRunLabel !== '' ? h($activeRunLabel) : '取得履歴を選択してください' ?>
+        </div>
         <ul class="history-list" id="fetchHistoryList" data-active-run="<?= h((string)$runId) ?>">
-          <?php foreach ($fetchRuns as $run): ?>
+          <?php foreach ($fetchRuns as $index => $run): ?>
             <?php $active = (int)$run['id'] === $runId; ?>
             <li class="history-list__item">
               <button
@@ -351,8 +363,10 @@ foreach ($genreOptions as $genreOption) {
                 type="button"
                 data-run-id="<?= h((string)$run['id']) ?>"
                 data-fetched-at="<?= h((string)$run['fetched_at']) ?>"
+                data-run-label="<?= h('取得' . ($index + 1)) ?>"
               >
-                <?= h((string)$run['fetched_at']) ?>
+                <span class="history-list__label">取得<?= $index + 1 ?></span>
+                <span class="history-list__date"><?= h((string)$run['fetched_at']) ?></span>
               </button>
             </li>
           <?php endforeach; ?>
@@ -361,14 +375,22 @@ foreach ($genreOptions as $genreOption) {
     </div>
   </div>
 
-  <form class="row" method="get">
+  <form class="row items-filter" method="get">
     <input type="hidden" name="run_id" value="<?= h((string)$runId) ?>">
-    <input class="input" type="text" name="q" placeholder="キーワード検索" value="<?= h($keyword) ?>">
-    <select class="input" name="order">
-      <option value="rank" <?= $order === 'rank' ? 'selected' : '' ?>>ランキング順</option>
-      <option value="new" <?= $order === 'new' ? 'selected' : '' ?>>新着順</option>
-    </select>
-    <button class="btn" type="submit">検索</button>
+    <div class="items-filter__field">
+      <label class="items-filter__label" for="itemsKeyword">キーワード検索</label>
+      <input id="itemsKeyword" class="input" type="text" name="q" placeholder="キーワード検索" value="<?= h($keyword) ?>">
+    </div>
+    <div class="items-filter__field">
+      <label class="items-filter__label" for="itemsOrder">並び替え</label>
+      <select id="itemsOrder" class="input" name="order">
+        <option value="rank" <?= $order === 'rank' ? 'selected' : '' ?>>ランキング順</option>
+        <option value="new" <?= $order === 'new' ? 'selected' : '' ?>>新着順</option>
+      </select>
+    </div>
+    <div class="items-filter__actions">
+      <button class="btn btn--primary" type="submit">検索</button>
+    </div>
   </form>
 
   <div id="itemsList" data-run-id="<?= h((string)$runId) ?>">

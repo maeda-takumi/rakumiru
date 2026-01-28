@@ -437,6 +437,7 @@
   const historyList = document.getElementById("fetchHistoryList");
   const itemsList = document.getElementById("itemsList");
   const searchForm = document.querySelector("form.row");
+  const activeLabel = document.getElementById("activeRunLabel");
 
   if (!historyList || !itemsList) return;
 
@@ -446,6 +447,19 @@
     });
   };
 
+  const setActiveLabel = (runId) => {
+    if (!activeLabel) return;
+    const activeButton = historyList.querySelector(
+      `.history-list__button[data-run-id="${runId}"]`
+    );
+    if (!activeButton) {
+      activeLabel.textContent = "取得履歴を選択してください";
+      return;
+    }
+    const label = activeButton.dataset.runLabel || "取得";
+    const fetchedAt = activeButton.dataset.fetchedAt || "";
+    activeLabel.textContent = fetchedAt ? `${label} ${fetchedAt}` : label;
+  };
   const updateHiddenRunId = (runId) => {
     const hidden = searchForm?.querySelector("input[name='run_id']");
     if (hidden) hidden.value = String(runId);
@@ -472,7 +486,7 @@
       }
       itemsList.innerHTML = json.html || "";
       setActive(runId);
-      updateHiddenRunId(runId);
+      setActiveLabel(runId);
     } catch (e) {
       itemsList.innerHTML = '<p class="muted">通信エラーが発生しました。</p>';
     } finally {
@@ -487,4 +501,9 @@
     if (!runId) return;
     fetchItems(runId);
   });
+
+  const initialRunId = historyList.dataset.activeRun;
+  if (initialRunId) {
+    setActiveLabel(initialRunId);
+  }
 })();

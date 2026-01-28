@@ -295,13 +295,13 @@ try {
         AND fr.id NOT IN (
           SELECT id FROM (
             SELECT id FROM fetch_runs
-            WHERE user_id = :uid
+            WHERE user_id = :uid2
             ORDER BY fetched_at DESC
             LIMIT 5
           ) AS keep_runs
         )
     ");
-    $cleanupStmt->execute([':uid' => $userId]);
+    $cleanupStmt->execute([':uid' => $userId, ':uid2' => $userId]);
 
     $cleanupRunsStmt = $pdo->prepare("
       DELETE FROM fetch_runs
@@ -309,14 +309,14 @@ try {
         AND id NOT IN (
           SELECT id FROM (
             SELECT id FROM fetch_runs
-            WHERE user_id = :uid
+            WHERE user_id = :uid2
             ORDER BY fetched_at DESC
             LIMIT 5
           ) AS keep_runs
         )
     ");
-    $cleanupRunsStmt->execute([':uid' => $userId]);
-    
+    $cleanupRunsStmt->execute([':uid' => $userId, ':uid2' => $userId]);
+
     $count = count($itemsByCode);
     $pdo->commit();
     $genreSummary = count($normalizedGenreIds) > 0 ? count($normalizedGenreIds) . 'ジャンル' : '総合';
