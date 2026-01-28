@@ -258,8 +258,12 @@ foreach ($genreOptions as $genreOption) {
         <!-- 子ジャンル -->
         <div>
           <div class="muted" style="margin:0 0 8px;">子ジャンル</div>
-          <div id="childGenreWrap" class="genre-grid" style="grid-template-columns: 1fr;">
-            <span class="muted">親ジャンルを選ぶと表示されます</span>
+          <div id="childGenreWrap">
+            <ul class="genre-tree">
+              <li class="genre-tree__item">
+                <span class="muted">親ジャンルを選ぶと表示されます</span>
+              </li>
+            </ul>
           </div>
         </div>
       </div>
@@ -366,29 +370,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnOk = document.getElementById('btnGenreModalOk');
   const btnClear = document.getElementById('btnClearGenres');
 
-  const genreSelected = document.getElementById('genreSelected');
-
-  // キャンセル用に、開いた時点のチェック状態を保存
-  let snapshot = null;
-
-  function getCheckedInput() {
-    return document.querySelector('input[name="genre_id"]:checked');
-  }
-
-  function renderSelected() {
-    const checked = getCheckedInput();
-    if (!checked) {
-      genreSelected.innerHTML = '<span class="muted">未選択（総合ランキング）</span>';
-      return;
+  let snapshot = { parentId: null, childId: null };
+  const renderSelectedGenres = () => {
+    if (typeof window.renderSelectedGenres === 'function') {
+      window.renderSelectedGenres();
     }
-    const label = checked.dataset.label || checked.value;
-    genreSelected.innerHTML = `<span class="genre-pill">${escapeHtml(label)}</span>`;
-  }
-
+  };      
   function openModal() {
     // snapshotを保存
-    snapshot = document.querySelector('input[name="genre_id"]:checked')?.value ?? null;
-
+    snapshot = {
+      parentId: document.querySelector('input[name="parent_genre_id"]:checked')?.value ?? null,
+      childId: document.querySelector('input[name="child_genre_id"]:checked')?.value ?? null
+    };
     modal.hidden = false;
     modal.setAttribute('aria-hidden', 'false');
     document.documentElement.classList.add('no-scroll');
@@ -403,22 +396,51 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function restoreSnapshot() {
-    const inputs = Array.from(document.querySelectorAll('input[name="genre_id"]'));
-    if (snapshot === null) {
-      inputs.forEach((i) => { i.checked = false; });
+
+    const parentInputs = Array.from(document.querySelectorAll('input[name="parent_genre_id"]'));
+    const childInputs = Array.from(document.querySelectorAll('input[name="child_genre_id"]'));
+    const childWrap = document.getElementById('childGenreWrap');
+
+    if (!snapshot?.parentId) {
+      parentInputs.forEach((i) => { i.checked = false; });
+      childInputs.forEach((i) => { i.checked = false; });
+      if (childWrap) {
+        childWrap.innerHTML = '<span class="muted">親ジャンルを選ぶと表示されます</span>';
+      }
+      renderSelectedGenres();
       return;
     }
-    inputs.forEach((i) => { i.checked = i.value === snapshot; });
-  }
 
-  // HTMLエスケープ（最低限）
-  function escapeHtml(str) {
-    return String(str)
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
+    parentInputs.forEach((i) => { i.checked = i.value === snapshot.parentId; });
+
+    const parent = parentInputs.find((i) => i.checked);
+    if (parent) {
+      parent.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    if (!snapshot.childId) {
+      renderSelectedGenres();
+      return;
+    }
+
+    const applyChildSelection = () => {
+      const nextChildInputs = Array.from(document.querySelectorAll('input[name="child_genre_id"]'));
+      const match = nextChildInputs.find((i) => i.value === snapshot.childId);
+      if (!match) return false;
+      match.checked = true;
+      renderSelectedGenres();
+      return true;
+    };
+
+    if (applyChildSelection()) return;
+
+    if (!childWrap) return;
+    const observer = new MutationObserver(() => {
+      if (applyChildSelection()) {
+        observer.disconnect();
+      }
+    });
+    observer.observe(childWrap, { childList: true, subtree: true });
   }
 
   btnOpen?.addEventListener('click', openModal);
@@ -436,7 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnOk?.addEventListener('click', () => {
     closeModal();
-    renderSelected();
+    renderSelectedGenres();
   });
 
   // 背景クリックで閉じる（キャンセル扱い）
@@ -448,12 +470,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   btnClear?.addEventListener('click', () => {
-    document.querySelectorAll('input[name="genre_id"]').forEach(i => i.checked = false);
-    renderSelected();
+    document.querySelectorAll('input[name="parent_genre_id"]').forEach(i => i.checked = false);
+    document.querySelectorAll('input[name="child_genre_id"]').forEach(i => i.checked = false);
+    renderSelectedGenres();
   });
 
   // 初期描画
-  renderSelected();
+  renderSelectedGenres();
 });
 </script>
 

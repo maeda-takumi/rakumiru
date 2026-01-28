@@ -473,6 +473,28 @@ main.container {
 }
 .chip__x:hover{ color: var(--text); }
 
+/* ===== Genre tree ===== */
+.genre-tree{
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 18px;
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.genre-tree__item{
+  position: relative;
+  padding-left: 12px;
+}
+.genre-tree__item::before{
+  content: "";
+  position: absolute;
+  left: -18px;
+  top: 16px;
+  width: 12px;
+  border-top: 1px solid var(--line);
+}
 /* ===== Modal (info) ===== */
 .modal-overlay[hidden]{ display:none; }
 .modal-overlay{

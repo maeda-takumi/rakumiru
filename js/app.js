@@ -196,7 +196,13 @@
   async function loadChildren(parentId) {
     if (!childWrap) return;
 
-    childWrap.innerHTML = `<span class="muted">読み込み中…</span>`;
+    childWrap.innerHTML = `
+      <ul class="genre-tree">
+        <li class="genre-tree__item">
+          <span class="muted">読み込み中…</span>
+        </li>
+      </ul>
+    `;
 
     try {
       // ★さっき作ると言ったAPIのパスに合わせてください
@@ -209,19 +215,31 @@
 
       const items = json.items || [];
       if (!items.length) {
-        childWrap.innerHTML = `<span class="muted">子ジャンルがありません</span>`;
+        childWrap.innerHTML = `
+          <ul class="genre-tree">
+            <li class="genre-tree__item">
+              <span class="muted">子ジャンルがありません</span>
+            </li>
+          </ul>
+        `;
         return;
       }
 
-      childWrap.innerHTML = items.map(it => `
-        <label class="genre-option">
-          <input type="radio"
-                 name="child_genre_id"
-                 value="${escapeHtml(it.id)}"
-                 data-label="${escapeHtml(it.label)}">
-          <span>${escapeHtml(it.label)}</span>
-        </label>
-      `).join("");
+      childWrap.innerHTML = `
+        <ul class="genre-tree">
+          ${items.map(it => `
+            <li class="genre-tree__item">
+              <label class="genre-option">
+                <input type="radio"
+                       name="child_genre_id"
+                       value="${escapeHtml(it.id)}"
+                       data-label="${escapeHtml(it.label)}">
+                <span>${escapeHtml(it.label)}</span>
+              </label>
+            </li>
+          `).join("")}
+        </ul>
+      `;
 
       // 子を選んだら表示更新
       childWrap.querySelectorAll(`input[name="child_genre_id"]`).forEach((el) => {
@@ -229,7 +247,13 @@
       });
 
     } catch (e) {
-      childWrap.innerHTML = `<span class="muted">読み込み失敗：${escapeHtml(e.message || String(e))}</span>`;
+      childWrap.innerHTML = `
+        <ul class="genre-tree">
+          <li class="genre-tree__item">
+            <span class="muted">読み込み失敗：${escapeHtml(e.message || String(e))}</span>
+          </li>
+        </ul>
+      `;
     }
   }
 
@@ -292,6 +316,7 @@
   });
 
   renderSelectedGenres();
+  window.renderSelectedGenres = renderSelectedGenres;
 
   btn.addEventListener("click", async () => {
     btn.disabled = true;
