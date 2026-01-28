@@ -452,7 +452,7 @@ main.container {
   padding: 8px 10px;
   border-radius: 999px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--bg);
   font-size: 12px;
   font-weight: 700;
 }

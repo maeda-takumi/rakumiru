@@ -174,7 +174,7 @@
   const periodEl = document.getElementById("period");
   const hitsEl = document.getElementById("hits");
 
-  const childWrap = document.getElementById("childGenreWrap");
+  const childContainers = document.querySelectorAll(".genre-children[data-parent-id]");
 
   if (!btn || !statusEl) return;
 
@@ -191,9 +191,27 @@
     .replaceAll("'", "&#039;");
 
   const getChecked = (name) => document.querySelector(`input[name="${name}"]:checked`);
+  const setContainerPlaceholder = (container) => {
+    container.innerHTML = `
+      <ul class="genre-tree">
+        <li class="genre-tree__item">
+          <span class="muted">親ジャンルを選ぶと表示されます</span>
+        </li>
+      </ul>
+    `;
+  };
+  const getChildContainer = (parentId) =>
+    document.querySelector(`.genre-children[data-parent-id="${parentId}"]`);
+  const toggleChildContainers = (activeParentId) => {
+    childContainers.forEach((container) => {
+      const isActive = container.dataset.parentId === activeParentId;
+      container.classList.toggle("is-open", isActive);
+    });
+  };
 
   // 親が変わったら子をDBから読み込む
   async function loadChildren(parentId) {
+    const childWrap = getChildContainer(parentId);
     if (!childWrap) return;
 
     childWrap.innerHTML = `
@@ -300,6 +318,7 @@
     input.addEventListener("change", async () => {
       // 親変わったら子の選択は消える
       document.querySelectorAll(`input[name="child_genre_id"]`).forEach(i => i.checked = false);
+      toggleChildContainers(input.value);
       await loadChildren(input.value);
       renderSelectedGenres();
     });
@@ -308,10 +327,10 @@
   clearGenresBtn?.addEventListener("click", () => {
     parentInputs.forEach((i) => { i.checked = false; });
     document.querySelectorAll(`input[name="child_genre_id"]`).forEach(i => i.checked = false);
-
-    if (childWrap) {
-      childWrap.innerHTML = `<span class="muted">親ジャンルを選ぶと表示されます</span>`;
-    }
+    childContainers.forEach((container) => {
+      container.classList.remove("is-open");
+      setContainerPlaceholder(container);
+    });
     renderSelectedGenres();
   });
 

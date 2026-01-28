@@ -135,8 +135,17 @@ foreach ($genreOptions as $genreOption) {
     flex-direction: column;
     gap: 12px;
   }
+  .genre-parent{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
   .genre-children{
     padding-left: 18px;
+    display: none;
+  }
+  .genre-children.is-open{
+    display: block;
   }
   @media (max-width: 520px){
     .genre-grid{ grid-template-columns: 1fr; }
@@ -269,25 +278,23 @@ foreach ($genreOptions as $genreOption) {
         <div class="muted" style="margin:0 0 4px;">親ジャンル</div>
         <div class="genre-grid" id="parentGenreSelect" style="grid-template-columns: 1fr;">
           <?php foreach ($genreOptions as $genre): ?>
-            <label class="genre-option">
-              <input type="radio"
-                    name="parent_genre_id"
-                    value="<?= h($genre['id']) ?>"
-                    data-label="<?= h($genre['label']) ?>">
-              <span><?= h($genre['label']) ?></span>
-            </label>
+            <div class="genre-parent">
+              <label class="genre-option">
+                <input type="radio"
+                      name="parent_genre_id"
+                      value="<?= h($genre['id']) ?>"
+                      data-label="<?= h($genre['label']) ?>">
+                <span><?= h($genre['label']) ?></span>
+              </label>
+              <div class="genre-children" data-parent-id="<?= h($genre['id']) ?>">
+                <ul class="genre-tree">
+                  <li class="genre-tree__item">
+                    <span class="muted">親ジャンルを選ぶと表示されます</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
           <?php endforeach; ?>
-        </div>
-
-        <!-- 子ジャンル -->
-
-        <div class="muted" style="margin:4px 0 0;">子ジャンル</div>
-        <div id="childGenreWrap" class="genre-children">
-          <ul class="genre-tree">
-            <li class="genre-tree__item">
-              <span class="muted">親ジャンルを選ぶと表示されます</span>
-            </li>
-          </ul>
         </div>
       </div>
     </div>
@@ -422,14 +429,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const parentInputs = Array.from(document.querySelectorAll('input[name="parent_genre_id"]'));
     const childInputs = Array.from(document.querySelectorAll('input[name="child_genre_id"]'));
-    const childWrap = document.getElementById('childGenreWrap');
+    const childContainers = Array.from(document.querySelectorAll('.genre-children[data-parent-id]'));
+    const resetChildContainers = () => {
+      childContainers.forEach((container) => {
+        container.classList.remove('is-open');
+        container.innerHTML = `
+          <ul class="genre-tree">
+            <li class="genre-tree__item">
+              <span class="muted">親ジャンルを選ぶと表示されます</span>
+            </li>
+          </ul>
+        `;
+      });
+    };
 
     if (!snapshot?.parentId) {
       parentInputs.forEach((i) => { i.checked = false; });
       childInputs.forEach((i) => { i.checked = false; });
-      if (childWrap) {
-        childWrap.innerHTML = '<span class="muted">親ジャンルを選ぶと表示されます</span>';
-      }
+      resetChildContainers();
       renderSelectedGenres();
       return;
     }
@@ -457,13 +474,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (applyChildSelection()) return;
 
-    if (!childWrap) return;
+    const childContainer = document.querySelector(`.genre-children[data-parent-id="${snapshot.parentId}"]`);
+    if (!childContainer) return;
     const observer = new MutationObserver(() => {
       if (applyChildSelection()) {
         observer.disconnect();
       }
     });
-    observer.observe(childWrap, { childList: true, subtree: true });
+    observer.observe(childContainer, { childList: true, subtree: true });
   }
 
   btnOpen?.addEventListener('click', openModal);
