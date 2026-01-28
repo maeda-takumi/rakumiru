@@ -15,10 +15,14 @@ $period = trim($_POST['period'] ?? 'realtime');
 $hits = 30;
 
 $normalizedGenreIds = [];
-if (is_array($genreIds)) {
-    $normalizedGenreIds = $genreIds;
-} elseif ($genreIds !== '') {
-    $normalizedGenreIds = [$genreIds];
+if (isset($_POST['genre_ids'])) {
+    if (is_array($genreIds) && count($genreIds) > 0) {
+        $normalizedGenreIds = $genreIds;
+    } elseif ($genreIds !== '') {
+        $normalizedGenreIds = [$genreIds];
+    } elseif ($genreId !== '') {
+        $normalizedGenreIds = [$genreId];
+    }
 } elseif ($genreId !== '') {
     $normalizedGenreIds = [$genreId];
 }
@@ -85,6 +89,47 @@ function pick_image_url(array $item): ?string {
     return null;
 }
 
+function fetch_item_genre_id(string $appId, string $itemCode): ?string {
+    if ($itemCode === '') {
+        return null;
+    }
+
+    static $lastRequestAt = 0.0;
+    $now = microtime(true);
+    $elapsed = $now - $lastRequestAt;
+    if ($elapsed < 1.05) {
+        usleep((int)((1.05 - $elapsed) * 1000000));
+    }
+    $lastRequestAt = microtime(true);
+
+    $query = [
+        'applicationId' => $appId,
+        'format' => 'json',
+        'formatVersion' => 2,
+        'itemCode' => $itemCode,
+        'hits' => 1,
+        'elements' => 'genreId',
+    ];
+    $url = 'https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601?' . http_build_query($query);
+
+    try {
+        $response = http_get_json($url);
+    } catch (Throwable $e) {
+        return null;
+    }
+
+    $items = $response['items'] ?? $response['Items'] ?? null;
+    if (!is_array($items) || count($items) === 0) {
+        return null;
+    }
+
+    $genreId = $items[0]['genreId'] ?? null;
+    if ($genreId === null || $genreId === '') {
+        return null;
+    }
+
+    return (string)$genreId;
+}
 try {
     $pdo = db();
     $stmt = $pdo->prepare('SELECT value FROM api_keys WHERE user_id = :uid AND provider = :provider LIMIT 1');
@@ -187,6 +232,10 @@ try {
         }
         $genreValue = count($orderedGenreIds) > 0 ? implode(',', $orderedGenreIds) : null;
 
+        $searchGenreId = fetch_item_genre_id($rakutenAppId, $code);
+        if ($searchGenreId !== null && $searchGenreId !== '') {
+            $genreValue = $searchGenreId;
+        }
         $upsert->execute([
             ':user_id' => $userId,
             ':item_code' => $data['item_code'],

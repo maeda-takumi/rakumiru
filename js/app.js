@@ -239,7 +239,9 @@
 
       setStatus(`${json.message}（${json.fetched_at}）`, "success");
       setTimeout(() => {
-        window.location.reload();
+        const url = new URL(window.location.href);
+        url.searchParams.set("refresh", Date.now().toString());
+        window.location.href = url.toString();
       }, 600);
     } catch (e) {
       setStatus("通信エラーが発生しました", "danger");

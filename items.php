@@ -74,6 +74,10 @@ $genreOptions = [
   ['id' => '101381', 'label' => 'カタログギフト・チケット'],
   ['id' => '100000', 'label' => '百貨店・総合通販・ギフト'],
 ];
+$genreLabels = [];
+foreach ($genreOptions as $genreOption) {
+  $genreLabels[$genreOption['id']] = $genreOption['label'];
+}
 ?>
 
 <style>
@@ -275,6 +279,22 @@ $genreOptions = [
   <?php else: ?>
     <div class="items-grid">
       <?php foreach ($items as $item): ?>
+        <?php
+          $genreDisplay = '';
+          if (!empty($item['last_genre_id'])) {
+            $ids = array_values(array_filter(array_map('trim', explode(',', (string)$item['last_genre_id'])), 'strlen'));
+            $labels = [];
+            foreach ($ids as $id) {
+              $label = $genreLabels[$id] ?? null;
+              if ($label) {
+                $labels[] = $label . ' (' . $id . ')';
+              } else {
+                $labels[] = $id;
+              }
+            }
+            $genreDisplay = implode(' / ', $labels);
+          }
+        ?>
         <article class="item-card">
           <div class="item-card__image">
             <?php if (!empty($item['image_url'])): ?>
@@ -302,6 +322,11 @@ $genreOptions = [
                   <span>取得: <?= h($item['last_fetched_at']) ?></span>
                 <?php endif; ?>
               </div>
+              <?php if ($genreDisplay !== ''): ?>
+                <div class="item-card__meta">
+                  <span>ジャンル: <?= h($genreDisplay) ?></span>
+                </div>
+              <?php endif; ?>
               <div class="item-card__actions">
                 <?php if (!empty($item['item_url'])): ?>
                   <a class="btn" href="<?= h($item['item_url']) ?>" target="_blank" rel="noopener">商品ページ</a>
