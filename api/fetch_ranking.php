@@ -124,9 +124,9 @@ try {
         updated_at = CURRENT_TIMESTAMP
     ");
 
-    $count = 0;
     $fetchedAt = now();
-    $seen = [];
+    $itemsByCode = [];
+    $genreMap = [];
     $targets = count($normalizedGenreIds) > 0 ? $normalizedGenreIds : [null];
     foreach ($targets as $targetGenreId) {
         $query = [
@@ -156,31 +156,57 @@ try {
                 continue;
             }
 
-            $upsert->execute([
-                ':user_id' => $userId,
-                ':item_code' => $code,
-                ':item_name' => $item['itemName'] ?? '',
-                ':catchcopy' => $item['catchcopy'] ?? null,
-                ':item_price' => (int)($item['itemPrice'] ?? 0),
-                ':item_url' => $item['itemUrl'] ?? null,
-                ':affiliate_url' => $item['affiliateUrl'] ?? ($item['itemUrl'] ?? null),
-                ':image_url' => pick_image_url($item),
-                ':review_count' => (int)($item['reviewCount'] ?? 0),
-                ':review_average' => (float)($item['reviewAverage'] ?? 0),
-                ':availability' => (int)($item['availability'] ?? 0),
-                ':last_rank' => isset($item['rank']) ? (int)$item['rank'] : null,
-                ':last_genre_id' => $targetGenreId !== null && $targetGenreId !== '' ? (int)$targetGenreId : null,
-                ':last_period' => $period,
-                ':last_fetched_at' => $fetchedAt,
-            ]);
+            $itemsByCode[$code] = [
+                'item_code' => $code,
+                'item_name' => $item['itemName'] ?? '',
+                'catchcopy' => $item['catchcopy'] ?? null,
+                'item_price' => (int)($item['itemPrice'] ?? 0),
+                'item_url' => $item['itemUrl'] ?? null,
+                'affiliate_url' => $item['affiliateUrl'] ?? ($item['itemUrl'] ?? null),
+                'image_url' => pick_image_url($item),
+                'review_count' => (int)($item['reviewCount'] ?? 0),
+                'review_average' => (float)($item['reviewAverage'] ?? 0),
+                'availability' => (int)($item['availability'] ?? 0),
+                'last_rank' => isset($item['rank']) ? (int)$item['rank'] : null,
+            ];
 
-            if (!isset($seen[$code])) {
-                $count++;
-                $seen[$code] = true;
+            if ($targetGenreId !== null && $targetGenreId !== '') {
+                $genreMap[$code][$targetGenreId] = true;
             }
         }
     }
+    foreach ($itemsByCode as $code => $data) {
+        $orderedGenreIds = [];
+        foreach ($normalizedGenreIds as $genreId) {
+            if (isset($genreMap[$code][$genreId])) {
+                $orderedGenreIds[] = $genreId;
+            }
+        }
+        if (empty($orderedGenreIds)) {
+            $orderedGenreIds = array_keys($genreMap[$code] ?? []);
+        }
+        $genreValue = count($orderedGenreIds) > 0 ? implode(',', $orderedGenreIds) : null;
 
+        $upsert->execute([
+            ':user_id' => $userId,
+            ':item_code' => $data['item_code'],
+            ':item_name' => $data['item_name'],
+            ':catchcopy' => $data['catchcopy'],
+            ':item_price' => $data['item_price'],
+            ':item_url' => $data['item_url'],
+            ':affiliate_url' => $data['affiliate_url'],
+            ':image_url' => $data['image_url'],
+            ':review_count' => $data['review_count'],
+            ':review_average' => $data['review_average'],
+            ':availability' => $data['availability'],
+            ':last_rank' => $data['last_rank'],
+            ':last_genre_id' => $genreValue,
+            ':last_period' => $period,
+            ':last_fetched_at' => $fetchedAt,
+        ]);
+    }
+
+    $count = count($itemsByCode);
     $pdo->commit();
     $genreSummary = count($normalizedGenreIds) > 0 ? count($normalizedGenreIds) . 'ジャンル' : '総合';
 
