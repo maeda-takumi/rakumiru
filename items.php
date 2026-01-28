@@ -46,46 +46,173 @@ $genreOptions = [
 ];
 ?>
 
+<style>
+  /* ===== モーダル（最低限の内製） ===== */
+  .modal-overlay[hidden]{ display:none; }
+  .modal-overlay{
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 16px;
+  }
+  .modal{
+    width: min(680px, 100%);
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 18px 60px rgba(0,0,0,.25);
+    overflow: hidden;
+  }
+  .modal__head{
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(0,0,0,.08);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .modal__title{
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+  }
+  .modal__body{
+    padding: 12px 16px 16px;
+    max-height: min(70vh, 520px);
+    overflow: auto;
+  }
+  .modal__foot{
+    padding: 12px 16px;
+    border-top: 1px solid rgba(0,0,0,.08);
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+  }
+  .genre-grid{
+    display:grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+  }
+  @media (max-width: 520px){
+    .genre-grid{ grid-template-columns: 1fr; }
+  }
+  .genre-option{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    padding: 10px 10px;
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 12px;
+    background: #fff;
+    cursor: pointer;
+    user-select:none;
+  }
+  .genre-option input{ transform: scale(1.1); }
+  .genre-selected{
+    margin-top: 8px;
+    display:flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .genre-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(0,0,0,.06);
+    font-size: 12px;
+  }
+  .no-scroll{ overflow:hidden; }
+</style>
+
 <div class="card">
   <div class="card__head">
-    <h1 class="card__title">売れ筋ランキング取得</h1>
-    <p class="card__desc">楽天ランキングAPIから売れ筋商品を取得し、DBに保存します。</p>
-  </div>
+    <div class="fetch-head">
+      <h1 class="card__title">売れ筋ランキング取得</h1>
 
+      <button id="btnInfo" class="iconbtn" type="button" aria-label="検索条件の説明">
+        <img src="icon/info.png" alt="" class="info-icon">
+      </button>
+    </div>
+
+  </div>
   <div class="form">
+
+    <!-- ジャンル選択ボタン -->
     <div class="row">
-      <div class="field field--full">
-        <label class="label">ジャンル（複数選択可）</label>
-        <div class="genre-select" id="genreSelect">
-          <?php foreach ($genreOptions as $genre): ?>
-            <label class="genre-option">
-              <input type="checkbox" name="genre_ids[]" value="<?= h($genre['id']) ?>" data-label="<?= h($genre['label']) ?>">
-              <span><?= h($genre['label']) ?></span>
-            </label>
-          <?php endforeach; ?>
-        </div>
-        <div class="genre-selected" id="genreSelected">
-          <span class="muted">未選択（総合ランキング）</span>
-        </div>
-        <button id="btnClearGenres" class="btn btn--ghost" type="button">選択クリア</button>
+      <button id="btnOpenGenreModal" class="btn" type="button">ジャンル選択</button>
+    </div>
+
+    <!-- 選択ジャンル（×付き） -->
+    <div class="row">
+      <div id="genreSelected" class="chips">
+        <span class="muted">未選択（総合ランキング）</span>
       </div>
     </div>
+
+    <!-- 検索ボタン（取得） -->
     <div class="row">
-      <div class="field">
-        <span class="label">期間</span>
-        <div class="input">realtime</div>
-      </div>
-      <div class="field">
-        <span class="label">取得件数</span>
-        <div class="input">30件</div>
-      </div>
-    </div>
-    <div class="row">
-      <button id="btnFetchRanking" class="btn btn--primary" type="button">ランキングを取得して保存</button>
-      <div class="muted">最後の取得: <?= $lastFetchedAt ? h($lastFetchedAt) : '未取得' ?></div>
+      <button id="btnFetchRanking" class="btn btn--primary" type="button">検索</button>
     </div>
 
     <div id="fetchStatus" class="status muted"></div>
+  </div>
+
+</div>
+<!-- ▼ 検索条件説明モーダル -->
+<div id="infoModal" class="modal-overlay" hidden aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="infoModalTitle">
+    <div class="modal__head">
+      <h3 class="modal__title" id="infoModalTitle">検索条件について</h3>
+      <button id="btnInfoClose" class="btn btn--ghost" type="button">閉じる</button>
+    </div>
+
+    <div class="modal__body">
+      <ul class="list">
+        <li><b>取得期間：</b>リアルタイム固定</li>
+        <li><b>取得件数：</b>30件固定</li>
+        <li><b>ジャンル未選択：</b>総合ランキングを取得</li>
+        <li><b>ジャンル複数選択：</b>選択したジャンルごとに取得して保存</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ▼ モーダル（ポップアップ） -->
+<div id="genreModal" class="modal-overlay" hidden aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="genreModalTitle">
+    <div class="modal__head">
+      <h3 class="modal__title" id="genreModalTitle">ジャンルを選択</h3>
+      <button id="btnGenreModalClose" class="btn btn--ghost" type="button">閉じる</button>
+    </div>
+
+    <div class="modal__body">
+      <div class="muted" style="margin-bottom:10px;">
+        複数選択できます。未選択のまま「決定」すると総合ランキングになります。
+      </div>
+
+      <!-- ▼ ここにチェックボックスを置く（従来の input[name="genre_ids[]"] を維持） -->
+      <div class="genre-grid" id="genreSelect">
+        <?php foreach ($genreOptions as $genre): ?>
+          <label class="genre-option">
+            <input type="checkbox"
+                   name="genre_ids[]"
+                   value="<?= h($genre['id']) ?>"
+                   data-label="<?= h($genre['label']) ?>">
+            <span><?= h($genre['label']) ?></span>
+          </label>
+        <?php endforeach; ?>
+      </div>
+    </div>
+
+    <div class="modal__foot">
+      <button id="btnGenreModalCancel" class="btn btn--ghost" type="button">キャンセル</button>
+      <button id="btnGenreModalOk" class="btn btn--primary" type="button">決定</button>
+    </div>
   </div>
 </div>
 
@@ -151,5 +278,105 @@ $genreOptions = [
     </div>
   <?php endif; ?>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('genreModal');
+  const btnOpen = document.getElementById('btnOpenGenreModal');
+  const btnClose = document.getElementById('btnGenreModalClose');
+  const btnCancel = document.getElementById('btnGenreModalCancel');
+  const btnOk = document.getElementById('btnGenreModalOk');
+  const btnClear = document.getElementById('btnClearGenres');
+
+  const genreSelected = document.getElementById('genreSelected');
+
+  // キャンセル用に、開いた時点のチェック状態を保存
+  let snapshot = null;
+
+  function getCheckedInputs() {
+    return Array.from(document.querySelectorAll('input[name="genre_ids[]"]:checked'));
+  }
+
+  function renderSelected() {
+    const checked = getCheckedInputs();
+    if (checked.length === 0) {
+      genreSelected.innerHTML = '<span class="muted">未選択（総合ランキング）</span>';
+      return;
+    }
+    const pills = checked.map(i => {
+      const label = i.dataset.label || i.value;
+      return `<span class="genre-pill">${escapeHtml(label)}</span>`;
+    });
+    genreSelected.innerHTML = pills.join('');
+  }
+
+  function openModal() {
+    // snapshotを保存
+    snapshot = Array.from(document.querySelectorAll('input[name="genre_ids[]"]')).map(i => i.checked);
+
+    modal.hidden = false;
+    modal.setAttribute('aria-hidden', 'false');
+    document.documentElement.classList.add('no-scroll');
+    document.body.classList.add('no-scroll');
+  }
+
+  function closeModal() {
+    modal.hidden = true;
+    modal.setAttribute('aria-hidden', 'true');
+    document.documentElement.classList.remove('no-scroll');
+    document.body.classList.remove('no-scroll');
+  }
+
+  function restoreSnapshot() {
+    if (!snapshot) return;
+    const inputs = Array.from(document.querySelectorAll('input[name="genre_ids[]"]'));
+    inputs.forEach((i, idx) => { i.checked = !!snapshot[idx]; });
+  }
+
+  // HTMLエスケープ（最低限）
+  function escapeHtml(str) {
+    return String(str)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  btnOpen?.addEventListener('click', openModal);
+
+  btnClose?.addEventListener('click', () => {
+    // 閉じる＝キャンセル扱い（元に戻す）
+    restoreSnapshot();
+    closeModal();
+  });
+
+  btnCancel?.addEventListener('click', () => {
+    restoreSnapshot();
+    closeModal();
+  });
+
+  btnOk?.addEventListener('click', () => {
+    closeModal();
+    renderSelected();
+  });
+
+  // 背景クリックで閉じる（キャンセル扱い）
+  modal?.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      restoreSnapshot();
+      closeModal();
+    }
+  });
+
+  btnClear?.addEventListener('click', () => {
+    document.querySelectorAll('input[name="genre_ids[]"]').forEach(i => i.checked = false);
+    renderSelected();
+  });
+
+  // 初期描画
+  renderSelected();
+});
+</script>
 
 <?php require_once __DIR__ . '/footer.php'; ?>

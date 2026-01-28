@@ -179,35 +179,64 @@
     statusEl.textContent = msg || "";
   };
 
-  const renderSelectedGenres = () => {
-    if (!genreSelected) return;
-    const selected = [...genreInputs]
-      .filter((input) => input.checked)
-      .map((input) => ({
-        id: input.value,
-        label: input.dataset.label || input.value
-      }));
+const renderSelectedGenres = () => {
+  if (!genreSelected) return;
 
-    genreSelected.innerHTML = "";
-    if (selected.length === 0) {
-      const span = document.createElement("span");
-      span.className = "muted";
-      span.textContent = "未選択（総合ランキング）";
-      genreSelected.appendChild(span);
-      return;
-    }
+  const selected = [...genreInputs]
+    .filter((input) => input.checked)
+    .map((input) => ({
+      id: input.value,
+      label: input.dataset.label || input.value
+    }));
 
-    selected.forEach((genre) => {
-      const tag = document.createElement("span");
-      tag.className = "genre-tag";
-      tag.textContent = genre.label;
-      genreSelected.appendChild(tag);
-    });
-  };
+  genreSelected.innerHTML = "";
 
-  genreInputs.forEach((input) => {
-    input.addEventListener("change", renderSelectedGenres);
+  if (selected.length === 0) {
+    const span = document.createElement("span");
+    span.className = "chip chip--muted";
+    span.textContent = "総合（未選択）";
+    genreSelected.appendChild(span);
+    return;
+  }
+
+  selected.forEach((genre) => {
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.dataset.genreId = genre.id;
+
+    const label = document.createElement("span");
+    label.textContent = genre.label;
+
+    const x = document.createElement("button");
+    x.type = "button";
+    x.className = "chip__x";
+    x.textContent = "×";
+    x.setAttribute("aria-label", `${genre.label} を解除`);
+
+    chip.appendChild(x);
+    chip.appendChild(label);
+    genreSelected.appendChild(chip);
   });
+};
+
+  genreSelected?.addEventListener("click", (e) => {
+    const xBtn = e.target.closest(".chip__x");
+    if (!xBtn) return;
+
+    const chip = xBtn.closest(".chip");
+    const genreId = chip?.dataset.genreId;
+    if (!genreId) return;
+
+    // 対応するチェックを外す
+    const target = [...genreInputs].find((i) => i.value === genreId);
+    if (target) target.checked = false;
+
+    renderSelectedGenres();
+  });
+
+  // genreInputs.forEach((input) => {
+  //   input.addEventListener("change", renderSelectedGenres);
+  // });
 
   clearGenresBtn?.addEventListener("click", () => {
     genreInputs.forEach((input) => {
@@ -273,5 +302,37 @@
     }
     toggle.textContent = isOpen ? "閉じる" : "開く";
     toggle.setAttribute("aria-expanded", String(isOpen));
+  });
+})();
+
+(() => {
+  const infoModal = document.getElementById("infoModal");
+  const btnInfo = document.getElementById("btnInfo");
+  const btnInfoClose = document.getElementById("btnInfoClose");
+  const btnInfoOk = document.getElementById("btnInfoOk");
+
+  if (!infoModal || !btnInfo) return;
+
+  const open = () => {
+    infoModal.hidden = false;
+    infoModal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("no-scroll");
+  };
+  const close = () => {
+    infoModal.hidden = true;
+    infoModal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("no-scroll");
+  };
+
+  btnInfo.addEventListener("click", open);
+  btnInfoClose?.addEventListener("click", close);
+  btnInfoOk?.addEventListener("click", close);
+
+  infoModal.addEventListener("click", (e) => {
+    if (e.target === infoModal) close();
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !infoModal.hidden) close();
   });
 })();
