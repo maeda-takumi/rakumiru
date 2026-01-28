@@ -135,10 +135,10 @@ try {
             'formatVersion' => 2,
             'page' => 1,
             'hits' => $hits,
+        ];
         if ($period === 'realtime') {
             $query['period'] = 'realtime';
         }
-        ];
         if ($targetGenreId !== null && $targetGenreId !== '') {
             $query['genreId'] = $targetGenreId;
         }
