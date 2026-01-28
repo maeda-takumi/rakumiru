@@ -130,6 +130,14 @@ foreach ($genreOptions as $genreOption) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px 12px;
   }
+  .genre-stack{
+    display:flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .genre-children{
+    padding-left: 18px;
+  }
   @media (max-width: 520px){
     .genre-grid{ grid-template-columns: 1fr; }
   }
@@ -163,6 +171,7 @@ foreach ($genreOptions as $genreOption) {
     content: "✓";
     color: #111;
   }
+  .genre-option input{ transform: scale(1.1); }
   .genre-selected{
     margin-top: 8px;
     display:flex;
@@ -256,33 +265,29 @@ foreach ($genreOptions as $genreOption) {
         親ジャンルを選ぶと子ジャンルが表示されます。未選択なら総合ランキング。
       </div>
 
-      <div class="genre-grid" style="grid-template-columns: 1fr 1fr;">
-        <!-- 親ジャンル -->
-        <div>
-          <div class="muted" style="margin:0 0 8px;">親ジャンル</div>
-          <div class="genre-grid" id="parentGenreSelect" style="grid-template-columns: 1fr;">
-            <?php foreach ($genreOptions as $genre): ?>
-              <label class="genre-option">
-                <input type="radio"
-                      name="parent_genre_id"
-                      value="<?= h($genre['id']) ?>"
-                      data-label="<?= h($genre['label']) ?>">
-                <span><?= h($genre['label']) ?></span>
-              </label>
-            <?php endforeach; ?>
-          </div>
+      <div class="genre-stack">
+        <div class="muted" style="margin:0 0 4px;">親ジャンル</div>
+        <div class="genre-grid" id="parentGenreSelect" style="grid-template-columns: 1fr;">
+          <?php foreach ($genreOptions as $genre): ?>
+            <label class="genre-option">
+              <input type="radio"
+                    name="parent_genre_id"
+                    value="<?= h($genre['id']) ?>"
+                    data-label="<?= h($genre['label']) ?>">
+              <span><?= h($genre['label']) ?></span>
+            </label>
+          <?php endforeach; ?>
         </div>
 
         <!-- 子ジャンル -->
-        <div>
-          <div class="muted" style="margin:0 0 8px;">子ジャンル</div>
-          <div id="childGenreWrap">
-            <ul class="genre-tree">
-              <li class="genre-tree__item">
-                <span class="muted">親ジャンルを選ぶと表示されます</span>
-              </li>
-            </ul>
-          </div>
+
+        <div class="muted" style="margin:4px 0 0;">子ジャンル</div>
+        <div id="childGenreWrap" class="genre-children">
+          <ul class="genre-tree">
+            <li class="genre-tree__item">
+              <span class="muted">親ジャンルを選ぶと表示されます</span>
+            </li>
+          </ul>
         </div>
       </div>
     </div>
