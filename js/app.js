@@ -382,22 +382,69 @@
 
 
 (() => {
-  const cards = document.querySelectorAll(".item-card");
-  if (!cards.length) return;
+  const modal = document.getElementById("groupModal");
+  const title = document.getElementById("groupModalTitle");
+  const meta = document.getElementById("groupModalMeta");
+  const content = document.getElementById("groupModalContent");
+  const btnClose = document.getElementById("btnGroupModalClose");
+  const btnOk = document.getElementById("btnGroupModalOk");
+
+  if (!modal || !content) return;
+
+  const open = () => {
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+    document.documentElement.classList.add("no-scroll");
+    document.body.classList.add("no-scroll");
+  };
+  const close = () => {
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+    document.documentElement.classList.remove("no-scroll");
+    document.body.classList.remove("no-scroll");
+  };
+
+  const loadItems = async (runId) => {
+    content.innerHTML = '<p class="muted">読み込み中…</p>';
+    try {
+      const res = await fetch(`api/fetch_run_items.php?run_id=${encodeURIComponent(runId)}`);
+      const json = await res.json();
+      if (!json.ok) {
+        content.innerHTML = `<p class="muted">${json.error || "取得に失敗しました"}</p>`;
+        return;
+      }
+      content.innerHTML = json.html || '<p class="muted">商品がありません。</p>';
+    } catch (e) {
+      content.innerHTML = '<p class="muted">通信エラーが発生しました。</p>';
+    }
+  };
 
   document.addEventListener("click", (event) => {
-    const toggle = event.target.closest(".item-card__toggle");
-    if (!toggle) return;
-    const card = toggle.closest(".item-card");
+    const card = event.target.closest(".group-card");
     if (!card) return;
+    const runId = card.dataset.runId;
+    if (!runId) return;
 
-    const isOpen = card.classList.toggle("is-open");
-    const details = card.querySelector(".item-card__details");
-    if (details) {
-      details.hidden = !isOpen;
+    const runLabel = card.dataset.runLabel || "取得グループ";
+    const runDate = card.dataset.runDate || "";
+    const runGenre = card.dataset.runGenre || "";
+    const runCount = card.dataset.runCount || "";
+
+    if (title) {
+      title.textContent = `${runLabel} の詳細`;
     }
-    toggle.textContent = isOpen ? "閉じる" : "開く";
-    toggle.setAttribute("aria-expanded", String(isOpen));
+    if (meta) {
+      const chunks = [runDate, runGenre, runCount ? `${runCount}件` : ""].filter(Boolean);
+      meta.textContent = chunks.join(" / ");
+    }
+    open();
+    loadItems(runId);
+  });
+
+  btnClose?.addEventListener("click", close);
+  btnOk?.addEventListener("click", close);
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) close();
   });
 })();
 

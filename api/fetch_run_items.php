@@ -9,17 +9,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 $userId = 1;
 $runId = isset($_GET['run_id']) ? (int)$_GET['run_id'] : 0;
-$keyword = trim($_GET['q'] ?? '');
-$order = $_GET['order'] ?? 'rank';
 
 if ($runId <= 0) {
     json_ng('run_id が不正です');
 }
 
-$orderSql = 'fri.rank ASC, i.updated_at DESC';
-if ($order === 'new') {
-    $orderSql = 'i.updated_at DESC';
-}
 
 try {
     $pdo = db();
@@ -85,21 +79,17 @@ try {
       JOIN fetch_runs fr ON fr.id = fri.fetch_run_id
       WHERE fri.fetch_run_id = :run_id
         AND i.user_id = :uid
-        AND (:q = '' OR i.item_name LIKE :q_like_name OR i.catchcopy LIKE :q_like_catch)
-      ORDER BY {$orderSql}
+      ORDER BY fri.rank ASC, i.updated_at DESC
       LIMIT 200
     ");
     $itemsStmt->execute([
         ':run_id' => $runId,
         ':uid' => $userId,
-        ':q' => $keyword,
-        ':q_like_name' => '%' . $keyword . '%',
-        ':q_like_catch' => '%' . $keyword . '%',
     ]);
     $items = $itemsStmt->fetchAll();
 
     ob_start();
-    render_items_grid($items, $genreLabels);
+    render_group_items_list($items, $genreLabels);
     $html = ob_get_clean();
 
     json_ok([

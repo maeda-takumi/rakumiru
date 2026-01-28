@@ -5,14 +5,7 @@ require_once __DIR__ . '/inc/items_view.php';
 require_once __DIR__ . '/header.php';
 
 $userId = 1;
-$keyword = trim($_GET['q'] ?? '');
-$order = $_GET['order'] ?? 'rank';
 $runId = isset($_GET['run_id']) ? (int)$_GET['run_id'] : 0;
-
-$orderSql = 'fri.rank ASC, i.updated_at DESC';
-if ($order === 'new') {
-  $orderSql = 'i.updated_at DESC';
-}
 
 $pdo = db();
 $runsStmt = $pdo->prepare('
@@ -29,30 +22,20 @@ if ($runId === 0 && count($fetchRuns) > 0) {
   $runId = (int)$fetchRuns[0]['id'];
 }
 
-$items = [];
-if ($runId > 0) {
-  $itemsStmt = $pdo->prepare("
-    SELECT
-      i.*,
-      fri.rank AS last_rank,
-      fr.fetched_at AS last_fetched_at
-    FROM fetch_run_items fri
-    JOIN items i ON i.id = fri.item_id
-    JOIN fetch_runs fr ON fr.id = fri.fetch_run_id
-    WHERE fri.fetch_run_id = :run_id
-      AND i.user_id = :uid
-      AND (:q = '' OR i.item_name LIKE :q_like_name OR i.catchcopy LIKE :q_like_catch)
-    ORDER BY {$orderSql}
-    LIMIT 200
+$runCounts = [];
+if (count($fetchRuns) > 0) {
+  $runIds = array_map(static fn($run) => (int)$run['id'], $fetchRuns);
+  $placeholders = implode(',', array_fill(0, count($runIds), '?'));
+  $countStmt = $pdo->prepare("
+    SELECT fetch_run_id, COUNT(*) AS cnt
+    FROM fetch_run_items
+    WHERE fetch_run_id IN ({$placeholders})
+    GROUP BY fetch_run_id
   ");
-  $itemsStmt->execute([
-    ':run_id' => $runId,
-    ':uid' => $userId,
-    ':q' => $keyword,
-    ':q_like_name' => '%' . $keyword . '%',
-    ':q_like_catch' => '%' . $keyword . '%',
-  ]);
-  $items = $itemsStmt->fetchAll();
+  $countStmt->execute($runIds);
+  foreach ($countStmt->fetchAll() as $row) {
+    $runCounts[(int)$row['fetch_run_id']] = (int)$row['cnt'];
+  }
 }
 
 $genreOptions = [
@@ -223,8 +206,7 @@ foreach ($genreOptions as $genreOption) {
 
 <div class="card">
   <div class="card__head">
-    <div class="fetch-head">
-      <h1 class="card__title">売れ筋ランキング取得</h1>
+      <h2 class="card__title">取得グループ一覧</h2>
 
       <button id="btnInfo" class="iconbtn" type="button" aria-label="検索条件の説明">
         <img src="icon/info.png" alt="" class="info-icon">
@@ -331,10 +313,9 @@ foreach ($genreOptions as $genreOption) {
 
 <div class="card">
   <div class="card__head">
-    <h2 class="card__title">商品一覧</h2>
-
-    <p class="card__desc">取得履歴から選択した商品を表示します（最大200件）。</p>
+    <h2 class="card__title">取得グループ一覧</h2>
   </div>
+  <p class="card__desc">取得したグループをカードで表示します。カードを押すと詳細を確認できます。</p>
 
   <div class="row">
     <div class="history-block">
@@ -374,37 +355,32 @@ foreach ($genreOptions as $genreOption) {
       <?php endif; ?>
     </div>
   </div>
-
-  <form class="row items-filter" method="get">
-    <input type="hidden" name="run_id" value="<?= h((string)$runId) ?>">
-    <div class="items-filter__field">
-      <label class="items-filter__label" for="itemsKeyword">キーワード検索</label>
-      <input id="itemsKeyword" class="input" type="text" name="q" placeholder="キーワード検索" value="<?= h($keyword) ?>">
-    </div>
-    <div class="items-filter__field">
-      <label class="items-filter__label" for="itemsOrder">並び替え</label>
-      <select id="itemsOrder" class="input" name="order">
-        <option value="rank" <?= $order === 'rank' ? 'selected' : '' ?>>ランキング順</option>
-        <option value="new" <?= $order === 'new' ? 'selected' : '' ?>>新着順</option>
-      </select>
-    </div>
-    <div class="items-filter__actions">
-      <button class="btn btn--primary" type="submit">検索</button>
-    </div>
-  </form>
-
-  <div id="itemsList" data-run-id="<?= h((string)$runId) ?>">
+  <div id="groupsList">
     <?php
       if ($runId === 0 && count($fetchRuns) === 0):
     ?>
-      <p class="muted">まだ商品がありません。上の「ランキングを取得して保存」を実行してください。</p>
+      <p class="muted">まだ取得グループがありません。上の「ランキングを取得して保存」を実行してください。</p>
     <?php
       else:
-        render_items_grid($items, $genreLabels);
+        render_group_cards($fetchRuns, $runCounts, $genreLabels);
       endif;
     ?>
   </div>
-
+  <div id="groupModal" class="modal-overlay" hidden aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="groupModalTitle">
+      <div class="modal__head">
+        <h3 class="modal__title" id="groupModalTitle">取得グループ詳細</h3>
+        <button id="btnGroupModalClose" class="btn btn--ghost" type="button">閉じる</button>
+      </div>
+      <div class="modal__body">
+        <div class="group-modal__meta" id="groupModalMeta"></div>
+        <div id="groupModalContent"></div>
+      </div>
+      <div class="modal__foot">
+        <button id="btnGroupModalOk" class="btn btn--primary" type="button">閉じる</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -536,5 +512,4 @@ document.addEventListener('DOMContentLoaded', () => {
   renderSelectedGenres();
 });
 </script>
-
 <?php require_once __DIR__ . '/footer.php'; ?>
