@@ -235,22 +235,36 @@ foreach ($genreOptions as $genreOption) {
 
     <div class="modal__body">
       <div class="muted" style="margin-bottom:10px;">
-        1つだけ選択できます。未選択のまま「決定」すると総合ランキングになります。
+        親ジャンルを選ぶと子ジャンルが表示されます。未選択なら総合ランキング。
       </div>
 
-      <!-- ▼ ここにラジオボタンを置く -->
-      <div class="genre-grid" id="genreSelect">
-        <?php foreach ($genreOptions as $genre): ?>
-          <label class="genre-option">
-            <input type="radio"
-                   name="genre_id"
-                   value="<?= h($genre['id']) ?>"
-                   data-label="<?= h($genre['label']) ?>">
-            <span><?= h($genre['label']) ?></span>
-          </label>
-        <?php endforeach; ?>
+      <div class="genre-grid" style="grid-template-columns: 1fr 1fr;">
+        <!-- 親ジャンル -->
+        <div>
+          <div class="muted" style="margin:0 0 8px;">親ジャンル</div>
+          <div class="genre-grid" id="parentGenreSelect" style="grid-template-columns: 1fr;">
+            <?php foreach ($genreOptions as $genre): ?>
+              <label class="genre-option">
+                <input type="radio"
+                      name="parent_genre_id"
+                      value="<?= h($genre['id']) ?>"
+                      data-label="<?= h($genre['label']) ?>">
+                <span><?= h($genre['label']) ?></span>
+              </label>
+            <?php endforeach; ?>
+          </div>
+        </div>
+
+        <!-- 子ジャンル -->
+        <div>
+          <div class="muted" style="margin:0 0 8px;">子ジャンル</div>
+          <div id="childGenreWrap" class="genre-grid" style="grid-template-columns: 1fr;">
+            <span class="muted">親ジャンルを選ぶと表示されます</span>
+          </div>
+        </div>
       </div>
     </div>
+
 
     <div class="modal__foot">
       <button id="btnGenreModalCancel" class="btn btn--ghost" type="button">キャンセル</button>

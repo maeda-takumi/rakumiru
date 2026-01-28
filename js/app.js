@@ -166,11 +166,15 @@
 (() => {
   const btn = document.getElementById("btnFetchRanking");
   const statusEl = document.getElementById("fetchStatus");
-  const genreInputs = document.querySelectorAll("input[name='genre_id']");
+
+  const parentInputs = document.querySelectorAll("input[name='parent_genre_id']");
   const genreSelected = document.getElementById("genreSelected");
   const clearGenresBtn = document.getElementById("btnClearGenres");
+
   const periodEl = document.getElementById("period");
   const hitsEl = document.getElementById("hits");
+
+  const childWrap = document.getElementById("childGenreWrap");
 
   if (!btn || !statusEl) return;
 
@@ -179,34 +183,111 @@
     statusEl.textContent = msg || "";
   };
 
+  const escapeHtml = (str) => String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+  const getChecked = (name) => document.querySelector(`input[name="${name}"]:checked`);
+
+  // 親が変わったら子をDBから読み込む
+  async function loadChildren(parentId) {
+    if (!childWrap) return;
+
+    childWrap.innerHTML = `<span class="muted">読み込み中…</span>`;
+
+    try {
+      // ★さっき作ると言ったAPIのパスに合わせてください
+      // 例: /rakumiru/tools/genre_children_api.php
+      const url = `/rakumiru/tools/genre_children_api.php?parent=${encodeURIComponent(parentId)}`;
+      const res = await fetch(url, { cache: "no-store" });
+      const json = await res.json();
+
+      if (!json.ok) throw new Error(json.error || "failed");
+
+      const items = json.items || [];
+      if (!items.length) {
+        childWrap.innerHTML = `<span class="muted">子ジャンルがありません</span>`;
+        return;
+      }
+
+      childWrap.innerHTML = items.map(it => `
+        <label class="genre-option">
+          <input type="radio"
+                 name="child_genre_id"
+                 value="${escapeHtml(it.id)}"
+                 data-label="${escapeHtml(it.label)}">
+          <span>${escapeHtml(it.label)}</span>
+        </label>
+      `).join("");
+
+      // 子を選んだら表示更新
+      childWrap.querySelectorAll(`input[name="child_genre_id"]`).forEach((el) => {
+        el.addEventListener("change", renderSelectedGenres);
+      });
+
+    } catch (e) {
+      childWrap.innerHTML = `<span class="muted">読み込み失敗：${escapeHtml(e.message || String(e))}</span>`;
+    }
+  }
+
+  // 表示（親/子のどちらが選ばれているか）
   const renderSelectedGenres = () => {
     if (!genreSelected) return;
 
-    const selected = [...genreInputs].find((input) => input.checked);
+    const parent = getChecked("parent_genre_id");
+    const child  = getChecked("child_genre_id");
+
     genreSelected.innerHTML = "";
 
-    if (!selected) {
-      const span = document.createElement("span");
-      span.className = "chip chip--muted";
-      span.textContent = "総合（未選択）";
-      genreSelected.appendChild(span);
+    // 子が選ばれていれば子優先、なければ親
+    if (child) {
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.dataset.genreId = child.value;
+
+      const pLabel = parent?.dataset.label || parent?.value || "";
+      const cLabel = child.dataset.label || child.value;
+      chip.textContent = `${pLabel} > ${cLabel}`;
+
+      genreSelected.appendChild(chip);
       return;
     }
-    const chip = document.createElement("span");
-    chip.className = "chip";
-    chip.dataset.genreId = selected.value;
-    chip.textContent = selected.dataset.label || selected.value;
-    genreSelected.appendChild(chip);
+
+    if (parent) {
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.dataset.genreId = parent.value;
+      chip.textContent = parent.dataset.label || parent.value;
+      genreSelected.appendChild(chip);
+      return;
+    }
+
+    const span = document.createElement("span");
+    span.className = "chip chip--muted";
+    span.textContent = "総合（未選択）";
+    genreSelected.appendChild(span);
   };
 
-  // genreInputs.forEach((input) => {
-  //   input.addEventListener("change", renderSelectedGenres);
-  // });
+  // 親ジャンル変更 → 子ジャンルロード（＆子選択解除）
+  parentInputs.forEach((input) => {
+    input.addEventListener("change", async () => {
+      // 親変わったら子の選択は消える
+      document.querySelectorAll(`input[name="child_genre_id"]`).forEach(i => i.checked = false);
+      await loadChildren(input.value);
+      renderSelectedGenres();
+    });
+  });
 
   clearGenresBtn?.addEventListener("click", () => {
-    genreInputs.forEach((input) => {
-      input.checked = false;
-    });
+    parentInputs.forEach((i) => { i.checked = false; });
+    document.querySelectorAll(`input[name="child_genre_id"]`).forEach(i => i.checked = false);
+
+    if (childWrap) {
+      childWrap.innerHTML = `<span class="muted">親ジャンルを選ぶと表示されます</span>`;
+    }
     renderSelectedGenres();
   });
 
@@ -218,10 +299,14 @@
 
     try {
       const body = new URLSearchParams();
-      const selected = [...genreInputs].find((input) => input.checked);
-      if (selected) {
-        body.set("genre_id", selected.value);
-      }
+
+      const parent = getChecked("parent_genre_id");
+      const child  = getChecked("child_genre_id");
+
+      // ★送信する genre_id は「子があれば子」なければ「親」
+      if (child) body.set("genre_id", child.value);
+      else if (parent) body.set("genre_id", parent.value);
+
       if (periodEl?.value) body.set("period", periodEl.value);
       if (hitsEl?.value) body.set("hits", hitsEl.value);
 
@@ -250,6 +335,7 @@
     }
   });
 })();
+
 
 (() => {
   const cards = document.querySelectorAll(".item-card");
