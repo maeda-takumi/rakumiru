@@ -134,17 +134,35 @@ foreach ($genreOptions as $genreOption) {
     .genre-grid{ grid-template-columns: 1fr; }
   }
   .genre-option{
+    position: relative;
     display:flex;
-    gap:10px;
     align-items:center;
-    padding: 10px 10px;
-    border: 1px solid rgba(0,0,0,.08);
-    border-radius: 12px;
-    background: #fff;
+    padding: 4px 6px;
     cursor: pointer;
     user-select:none;
   }
-  .genre-option input{ transform: scale(1.1); }
+  .genre-option input{
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .genre-option span{
+    position: relative;
+    padding-left: 22px;
+    font-weight: 600;
+  }
+  .genre-option span::before{
+    content: "○";
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: #666;
+    font-weight: 700;
+  }
+  .genre-option input:checked + span::before{
+    content: "✓";
+    color: #111;
+  }
   .genre-selected{
     margin-top: 8px;
     display:flex;
