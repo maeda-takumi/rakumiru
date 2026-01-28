@@ -432,3 +432,59 @@
     if (e.key === "Escape" && !infoModal.hidden) close();
   });
 })();
+
+(() => {
+  const historyList = document.getElementById("fetchHistoryList");
+  const itemsList = document.getElementById("itemsList");
+  const searchForm = document.querySelector("form.row");
+
+  if (!historyList || !itemsList) return;
+
+  const setActive = (runId) => {
+    historyList.querySelectorAll(".history-list__button").forEach((btn) => {
+      btn.classList.toggle("is-active", btn.dataset.runId === String(runId));
+    });
+  };
+
+  const updateHiddenRunId = (runId) => {
+    const hidden = searchForm?.querySelector("input[name='run_id']");
+    if (hidden) hidden.value = String(runId);
+  };
+
+  const fetchItems = async (runId) => {
+    const params = new URLSearchParams();
+    params.set("run_id", runId);
+
+    const q = searchForm?.querySelector("input[name='q']")?.value ?? "";
+    const order = searchForm?.querySelector("select[name='order']")?.value ?? "rank";
+    if (q.trim() !== "") params.set("q", q.trim());
+    if (order) params.set("order", order);
+
+    itemsList.classList.add("is-loading");
+    itemsList.innerHTML = '<p class="muted">読み込み中…</p>';
+
+    try {
+      const res = await fetch(`api/fetch_run_items.php?${params.toString()}`, { cache: "no-store" });
+      const json = await res.json();
+      if (!json.ok) {
+        itemsList.innerHTML = `<p class="muted">読み込み失敗：${json.error || "エラーが発生しました"}</p>`;
+        return;
+      }
+      itemsList.innerHTML = json.html || "";
+      setActive(runId);
+      updateHiddenRunId(runId);
+    } catch (e) {
+      itemsList.innerHTML = '<p class="muted">通信エラーが発生しました。</p>';
+    } finally {
+      itemsList.classList.remove("is-loading");
+    }
+  };
+
+  historyList.addEventListener("click", (event) => {
+    const button = event.target.closest(".history-list__button");
+    if (!button) return;
+    const runId = button.dataset.runId;
+    if (!runId) return;
+    fetchItems(runId);
+  });
+})();

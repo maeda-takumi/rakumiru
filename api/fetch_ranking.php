@@ -170,6 +170,20 @@ try {
     ");
 
     $fetchedAt = now();
+    $genreValueForRun = count($normalizedGenreIds) > 0 ? implode(',', $normalizedGenreIds) : null;
+
+    $runInsert = $pdo->prepare("
+      INSERT INTO fetch_runs (user_id, fetched_at, period, genre_id)
+      VALUES (:user_id, :fetched_at, :period, :genre_id)
+    ");
+    $runInsert->execute([
+      ':user_id' => $userId,
+      ':fetched_at' => $fetchedAt,
+      ':period' => $period,
+      ':genre_id' => $genreValueForRun,
+    ]);
+    $fetchRunId = (int)$pdo->lastInsertId();
+
     $itemsByCode = [];
     $genreMap = [];
     $targets = count($normalizedGenreIds) > 0 ? $normalizedGenreIds : [null];
@@ -220,6 +234,12 @@ try {
             }
         }
     }
+    $itemIdStmt = $pdo->prepare('SELECT id FROM items WHERE user_id = :uid AND item_code = :item_code LIMIT 1');
+    $runItemInsert = $pdo->prepare("
+      INSERT INTO fetch_run_items (fetch_run_id, item_id, rank)
+      VALUES (:fetch_run_id, :item_id, :rank)
+      ON DUPLICATE KEY UPDATE rank = VALUES(rank)
+    ");
     foreach ($itemsByCode as $code => $data) {
         $orderedGenreIds = [];
         foreach ($normalizedGenreIds as $genreId) {
@@ -253,8 +273,50 @@ try {
             ':last_period' => $period,
             ':last_fetched_at' => $fetchedAt,
         ]);
+        $itemIdStmt->execute([
+          ':uid' => $userId,
+          ':item_code' => $data['item_code'],
+        ]);
+        $itemId = $itemIdStmt->fetchColumn();
+        if ($itemId) {
+          $runItemInsert->execute([
+            ':fetch_run_id' => $fetchRunId,
+            ':item_id' => (int)$itemId,
+            ':rank' => $data['last_rank'],
+          ]);
+        }
     }
 
+    $cleanupStmt = $pdo->prepare("
+      DELETE fri
+      FROM fetch_run_items fri
+      JOIN fetch_runs fr ON fr.id = fri.fetch_run_id
+      WHERE fr.user_id = :uid
+        AND fr.id NOT IN (
+          SELECT id FROM (
+            SELECT id FROM fetch_runs
+            WHERE user_id = :uid
+            ORDER BY fetched_at DESC
+            LIMIT 5
+          ) AS keep_runs
+        )
+    ");
+    $cleanupStmt->execute([':uid' => $userId]);
+
+    $cleanupRunsStmt = $pdo->prepare("
+      DELETE FROM fetch_runs
+      WHERE user_id = :uid
+        AND id NOT IN (
+          SELECT id FROM (
+            SELECT id FROM fetch_runs
+            WHERE user_id = :uid
+            ORDER BY fetched_at DESC
+            LIMIT 5
+          ) AS keep_runs
+        )
+    ");
+    $cleanupRunsStmt->execute([':uid' => $userId]);
+    
     $count = count($itemsByCode);
     $pdo->commit();
     $genreSummary = count($normalizedGenreIds) > 0 ? count($normalizedGenreIds) . 'ジャンル' : '総合';

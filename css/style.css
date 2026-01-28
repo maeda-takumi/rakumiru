@@ -366,6 +366,41 @@ main.container {
   margin-top: 16px;
 }
 
+.history-block{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.history-title{
+  font-weight: 700;
+  font-size: 14px;
+}
+.history-list{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.history-list__button{
+  border: 1px solid rgba(0,0,0,.1);
+  border-radius: 999px;
+  background: #fff;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background .2s ease, border-color .2s ease, color .2s ease;
+}
+.history-list__button:hover{
+  background: rgba(0,0,0,.05);
+}
+.history-list__button.is-active{
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
 .item-card{
   border: 1px solid var(--line);
   border-radius: 16px;

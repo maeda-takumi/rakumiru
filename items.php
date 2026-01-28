@@ -1,37 +1,59 @@
 <?php
 require_once __DIR__ . '/inc/functions.php';
 require_once __DIR__ . '/inc/db.php';
+require_once __DIR__ . '/inc/items_view.php';
 require_once __DIR__ . '/header.php';
 
 $userId = 1;
 $keyword = trim($_GET['q'] ?? '');
 $order = $_GET['order'] ?? 'rank';
+$runId = isset($_GET['run_id']) ? (int)$_GET['run_id'] : 0;
 
-$orderSql = 'last_rank ASC, updated_at DESC';
+$orderSql = 'fri.rank ASC, i.updated_at DESC';
 if ($order === 'new') {
-  $orderSql = 'updated_at DESC';
+  $orderSql = 'i.updated_at DESC';
 }
 
 $pdo = db();
-$maxFetched = $pdo->prepare('SELECT MAX(last_fetched_at) FROM items WHERE user_id = :uid');
-$maxFetched->execute([':uid' => $userId]);
-$lastFetchedAt = $maxFetched->fetchColumn();
-
-$itemsStmt = $pdo->prepare("
-  SELECT *
-  FROM items
+$runsStmt = $pdo->prepare('
+  SELECT id, fetched_at
+  FROM fetch_runs
   WHERE user_id = :uid
-    AND (:q = '' OR item_name LIKE :q_like_name OR catchcopy LIKE :q_like_catch)
-  ORDER BY {$orderSql}
-  LIMIT 200
-");
-$itemsStmt->execute([
-  ':uid' => $userId,
-  ':q' => $keyword,
-  ':q_like_name' => '%' . $keyword . '%',
-  ':q_like_catch' => '%' . $keyword . '%',
-]);
-$items = $itemsStmt->fetchAll();
+  ORDER BY fetched_at DESC
+  LIMIT 5
+');
+$runsStmt->execute([':uid' => $userId]);
+$fetchRuns = $runsStmt->fetchAll();
+
+if ($runId === 0 && count($fetchRuns) > 0) {
+  $runId = (int)$fetchRuns[0]['id'];
+}
+
+$items = [];
+if ($runId > 0) {
+  $itemsStmt = $pdo->prepare("
+    SELECT
+      i.*,
+      fri.rank AS last_rank,
+      fr.fetched_at AS last_fetched_at
+    FROM fetch_run_items fri
+    JOIN items i ON i.id = fri.item_id
+    JOIN fetch_runs fr ON fr.id = fri.fetch_run_id
+    WHERE fri.fetch_run_id = :run_id
+      AND i.user_id = :uid
+      AND (:q = '' OR i.item_name LIKE :q_like_name OR i.catchcopy LIKE :q_like_catch)
+    ORDER BY {$orderSql}
+    LIMIT 200
+  ");
+  $itemsStmt->execute([
+    ':run_id' => $runId,
+    ':uid' => $userId,
+    ':q' => $keyword,
+    ':q_like_name' => '%' . $keyword . '%',
+    ':q_like_catch' => '%' . $keyword . '%',
+  ]);
+  $items = $itemsStmt->fetchAll();
+}
 
 $genreOptions = [
   ['id' => '100371', 'label' => 'レディースファッション'],
@@ -310,10 +332,37 @@ foreach ($genreOptions as $genreOption) {
 <div class="card">
   <div class="card__head">
     <h2 class="card__title">商品一覧</h2>
-    <p class="card__desc">保存済みの商品を表示します（最大200件）。</p>
+
+    <p class="card__desc">取得履歴から選択した商品を表示します（最大200件）。</p>
+  </div>
+
+  <div class="row">
+    <div class="history-block">
+      <div class="history-title">取得履歴（直近5回）</div>
+      <?php if (count($fetchRuns) === 0): ?>
+        <p class="muted">取得履歴がありません。</p>
+      <?php else: ?>
+        <ul class="history-list" id="fetchHistoryList" data-active-run="<?= h((string)$runId) ?>">
+          <?php foreach ($fetchRuns as $run): ?>
+            <?php $active = (int)$run['id'] === $runId; ?>
+            <li class="history-list__item">
+              <button
+                class="history-list__button<?= $active ? ' is-active' : '' ?>"
+                type="button"
+                data-run-id="<?= h((string)$run['id']) ?>"
+                data-fetched-at="<?= h((string)$run['fetched_at']) ?>"
+              >
+                <?= h((string)$run['fetched_at']) ?>
+              </button>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
+    </div>
   </div>
 
   <form class="row" method="get">
+    <input type="hidden" name="run_id" value="<?= h((string)$runId) ?>">
     <input class="input" type="text" name="q" placeholder="キーワード検索" value="<?= h($keyword) ?>">
     <select class="input" name="order">
       <option value="rank" <?= $order === 'rank' ? 'selected' : '' ?>>ランキング順</option>
@@ -322,73 +371,18 @@ foreach ($genreOptions as $genreOption) {
     <button class="btn" type="submit">検索</button>
   </form>
 
-  <?php if (count($items) === 0): ?>
-    <p class="muted">まだ商品がありません。上の「ランキングを取得して保存」を実行してください。</p>
-  <?php else: ?>
-    <div class="items-grid">
-      <?php foreach ($items as $item): ?>
-        <?php
-          $genreDisplay = '';
-          if (!empty($item['last_genre_id'])) {
-            $ids = array_values(array_filter(array_map('trim', explode(',', (string)$item['last_genre_id'])), 'strlen'));
-            $labels = [];
-            foreach ($ids as $id) {
-              $label = $genreLabels[$id] ?? null;
-              if ($label) {
-                $labels[] = $label . ' (' . $id . ')';
-              } else {
-                $labels[] = $id;
-              }
-            }
-            $genreDisplay = implode(' / ', $labels);
-          }
-        ?>
-        <article class="item-card">
-          <div class="item-card__image">
-            <?php if (!empty($item['image_url'])): ?>
-              <img src="<?= h($item['image_url']) ?>" alt="<?= h($item['item_name']) ?>">
-            <?php else: ?>
-              <div class="item-card__placeholder">No Image</div>
-            <?php endif; ?>
-          </div>
-          <div class="item-card__body">
-            <div class="item-card__title"><?= h($item['item_name']) ?></div>
-            <button class="btn btn--ghost item-card__toggle" type="button" aria-expanded="false">開く</button>
-            <div class="item-card__details" hidden>
-              <?php if (!empty($item['catchcopy'])): ?>
-                <div class="item-card__catch"><?= h($item['catchcopy']) ?></div>
-              <?php endif; ?>
-              <div class="item-card__meta">
-                <span>価格: <?= h(number_format((int)$item['item_price'])) ?>円</span>
-                <?php if (!empty($item['last_rank'])): ?>
-                  <span>順位: <?= h((string)$item['last_rank']) ?></span>
-                <?php endif; ?>
-              </div>
-              <div class="item-card__meta">
-                <span>レビュー: <?= h((string)$item['review_average']) ?> (<?= h((string)$item['review_count']) ?>件)</span>
-                <?php if (!empty($item['last_fetched_at'])): ?>
-                  <span>取得: <?= h($item['last_fetched_at']) ?></span>
-                <?php endif; ?>
-              </div>
-              <?php if ($genreDisplay !== ''): ?>
-                <div class="item-card__meta">
-                  <span>ジャンル: <?= h($genreDisplay) ?></span>
-                </div>
-              <?php endif; ?>
-              <div class="item-card__actions">
-                <?php if (!empty($item['item_url'])): ?>
-                  <a class="btn" href="<?= h($item['item_url']) ?>" target="_blank" rel="noopener">商品ページ</a>
-                <?php endif; ?>
-                <?php if (!empty($item['affiliate_url'])): ?>
-                  <a class="btn" href="<?= h($item['affiliate_url']) ?>" target="_blank" rel="noopener">アフィリURL</a>
-                <?php endif; ?>
-              </div>
-            </div>
-          </div>
-        </article>
-      <?php endforeach; ?>
-    </div>
-  <?php endif; ?>
+  <div id="itemsList" data-run-id="<?= h((string)$runId) ?>">
+    <?php
+      if ($runId === 0 && count($fetchRuns) === 0):
+    ?>
+      <p class="muted">まだ商品がありません。上の「ランキングを取得して保存」を実行してください。</p>
+    <?php
+      else:
+        render_items_grid($items, $genreLabels);
+      endif;
+    ?>
+  </div>
+
 </div>
 
 <script>
